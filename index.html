@@ -138,7 +138,6 @@ td{border-bottom:1px solid var(--line);padding:6px 9px;font-variant-numeric:tabu
 .chart-switch button{border:0;background:transparent;color:var(--ink2);font:inherit;font-size:12px;font-weight:700;padding:7px 11px;border-radius:7px;cursor:pointer;white-space:nowrap}
 .chart-switch button:hover{background:#fff;color:var(--vw)}
 .chart-switch button.on{background:var(--vw);color:#fff;box-shadow:0 2px 8px rgba(0,30,80,.18)}
-.chart-switch button:disabled{cursor:default;opacity:1}
 .exec-chart{min-height:250px}
 .linechart{position:relative;padding:12px 8px 0}
 .linechart svg{display:block;width:100%;height:220px;overflow:visible}
@@ -259,6 +258,23 @@ th{z-index:2}
 .login-err{min-height:20px;margin-top:12px;font-size:12px;font-weight:600;color:var(--bad)}
 .login-foot{margin-top:4px;font-size:11px;color:var(--mute)}
 @media print{.login{display:none!important}}
+
+/* Cortina de carga */
+.cargando{position:fixed;inset:0;background:rgba(244,242,236,.82);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:90}
+:root[data-tema="oscuro"] .cargando{background:rgba(10,21,38,.86)}
+.cargando.oculto{display:none}
+.cbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 26px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.18);max-width:300px}
+.cbox b{display:block;margin-top:12px;font-size:15px;color:var(--ink)}
+.cbox p{font-size:12px;color:var(--mute);margin-top:4px}
+.spin{width:34px;height:34px;margin:0 auto;border:3px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:girar .8s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
+
+/* Modo oscuro: más contraste en los textos secundarios, que en el celular quedaban lavados */
+:root[data-tema="oscuro"]{--ink:#f2f7ff;--ink2:#cbd9ef;--mute:#a3b6d2}
+:root[data-tema="oscuro"] .sub,:root[data-tema="oscuro"] .k .l,:root[data-tema="oscuro"] .card h3{color:var(--ink2)}
+:root[data-tema="oscuro"] .card h3 span,:root[data-tema="oscuro"] .k .d{color:var(--mute)}
+:root[data-tema="oscuro"] td,:root[data-tema="oscuro"] .a p{color:var(--ink)}
+@media print{.cargando{display:none!important}}
 </style>
 </head>
 <body>
@@ -379,7 +395,7 @@ const dDesde=d=>d?Math.floor((HOY-new Date(d+"T00:00:00"))/864e5):null;
 const dEnt=r=>r[6]?Math.round((new Date(r[0])-new Date(r[6]))/864e5):null;
 
 // Normalización de filas (nombres legibles para el código)
-let TODAS,ENT,SALON,REC,VIA,ACC,ACP,CMV,STK,ULT;
+let TODAS,ENT,SALON,REC,VIA,ACC,ACP,CMV,STK,VIAJE,UNI,ULT;
 // Salón Lomas no es una entrega: la unidad pasa al salón como exhibición y esa fila se
 // borra cuando se vende de verdad. Se cuenta aparte, como preparación.
 const esSalon=r=>r.canal==="Salon Lomas";
@@ -392,11 +408,14 @@ const tasa=(num,den)=>den?Math.round(num/den*100):0;
 function prepararDatos(){
   TODAS=DATA.ent.map(r=>({f:r[0],canal:tit(r[1]),mod:r[2],vend:r[3],cm:r[4],acc:r[5],rec:r[6],modelo:r[7]||r[2],int:r[8]||"",dias:dEnt(r)}));
   ENT=TODAS.filter(r=>!esSalon(r)); SALON=TODAS.filter(esSalon);
-  REC=DATA.rec.map(r=>({f:r[0],mod:r[1],nov:r[2],clas:r[3]}));
+  REC=DATA.rec.map(r=>({f:r[0],mod:r[1],nov:r[2],clas:r[3],equipo:r[4],salida:r[5],origen:r[6]||"Sin dato",quien:r[7]||""}));
   VIA=DATA.via.map(r=>({f:r[0],grp:r[1],dest:tit(r[2]),mod:r[3]}));
   ACC=DATA.acc.map(r=>({f:r[0],items:r[1].map(tit),est:r[2]}));
   ACP=DATA.accPesos.map(r=>({f:r[0],t:r[1]}));
   CMV=DATA.cmv.map(r=>({f:r[0],mom:r[1],mod:r[2],vend:r[3]}));
+  UNI=(DATA.unidades||[]).map(r=>({int:r[0],modelo:r[1],mod:r[2],color:r[3],destino:r[4]||"",suc:r[5],cert:r[6],pago:r[7],fact:r[8],vend:r[9],entregada:r[10],
+    estado:!r[4]?"En viaje":(r[10]?"Entregada":(r[8]?"Facturada sin entregar":"Disponible"))}));
+  VIAJE=(DATA.enViaje||[]).map(r=>({f:r[0],mod:r[1],equipo:r[2],modelo:r[3]||r[1],int:r[4]||""}));
   STK=DATA.stock.map(r=>({int:r[0],mod:r[1],modelo:r[2],rec:r[3],op:r[4],ctrl:r[5],zp:r[6],patio:dDesde(r[3]),dzp:dDesde(r[6])}));
   ULT=ENT.map(r=>r.f).sort().pop()||new Date().toISOString().slice(0,10);
   F.mes=+ULT.slice(5,7); F.anio=+ULT.slice(0,4);
@@ -610,56 +629,46 @@ function columnas(fechas,dos=true,val){
   },240);
 }
 
-let grafResumen={accesorios:false,contratos:false};
+let grafResumen="ninguna";
 function serieMensualEntregas(anio){
   const a=new Array(12).fill(0);
   ENT.filter(okEnt).forEach(r=>{if(+r.f.slice(0,4)===anio)a[+r.f.slice(5,7)-1]++});
   return a;
 }
 // Tasa mensual con el criterio de Jorge: el denominador son solo las entregas de los
-// canales base; accesorios se toman de las entregas y contratos por fecha de venta.
+// canales base; el numerador, todo lo vendido (contratos por fecha de venta).
 function serieMensualTasa(campo){
   const den=new Array(12).fill(0), num=new Array(12).fill(0);
   ENT.filter(okEnt).forEach(r=>{if(+r.f.slice(0,4)===F.anio){const m=+r.f.slice(5,7)-1;if(enBase(r))den[m]++;if(campo==="acc"&&r.acc)num[m]++}});
   if(campo==="cm")CMV.filter(okCmv).forEach(r=>{if(+r.f.slice(0,4)===F.anio)num[+r.f.slice(5,7)-1]++});
   return den.map((v,i)=>v?Math.round(num[i]/v*100):null);
 }
-function graficoCombinado(){
-  const ent=serieMensualEntregas(F.anio);
-  const tAcc=grafResumen.accesorios?serieMensualTasa("acc"):null;
-  const tCm=grafResumen.contratos?serieMensualTasa("cm"):null;
+function graficoCombinado(tipo){
+  const ent=serieMensualEntregas(F.anio), t=tipo==='ninguna'?null:serieMensualTasa(tipo==='accesorios'?'acc':'cm');
   const series=[{name:"Entregas "+F.anio,type:"bar",data:ent,barMaxWidth:30,itemStyle:{color:C().barra2,borderRadius:[4,4,0,0]}}];
-  const hayTasa=tAcc||tCm;
-  const tasas=[...(tAcc||[]),...(tCm||[])].filter(x=>x!==null);
-  const ejes=[{type:"value",name:"Unidades",nameTextStyle:{color:C().mute,fontSize:10},...ejeY()}];
-  if(hayTasa){
-    ejes.push({type:"value",name:"Tasa %",nameTextStyle:{color:C().mute,fontSize:10},min:0,max:Math.max(100,...tasas),...ejeY(),splitLine:{show:false},axisLabel:{...ejeY().axisLabel,formatter:v=>v+"%"}});
+  const ejes=[{type:"value",...ejeY()}];
+  if(t){
+    ejes.push({type:"value",max:Math.max(100,...t.filter(x=>x!==null)),...ejeY(),splitLine:{show:false},axisLabel:{...ejeY().axisLabel,formatter:v=>v+"%"}});
+    series.push({name:tipo==='accesorios'?"Tasa accesorios":"Tasa contratos",type:"line",yAxisIndex:1,data:t,smooth:true,
+      symbolSize:8,lineStyle:{width:3,color:C().acento},itemStyle:{color:C().acento},connectNulls:true,
+      markLine:tipo==='contratos'?{silent:true,symbol:"none",data:[{yAxis:30,label:{formatter:"Meta 30%",color:"#c23b3b",fontSize:11},lineStyle:{color:"#c23b3b",type:"dashed"}}]}:undefined});
   }
-  if(tAcc)series.push({name:"Tasa accesorios",type:"line",yAxisIndex:1,data:tAcc,smooth:true,symbol:"circle",symbolSize:8,
-    lineStyle:{width:3,color:"#1b6fe0"},itemStyle:{color:"#1b6fe0",borderColor:C().fondo,borderWidth:2},connectNulls:true});
-  if(tCm)series.push({name:"Tasa contratos",type:"line",yAxisIndex:1,data:tCm,smooth:true,symbol:"diamond",symbolSize:9,
-    lineStyle:{width:3,color:"#00a37a"},itemStyle:{color:"#00a37a",borderColor:C().fondo,borderWidth:2},connectNulls:true,
-    markLine:{silent:true,symbol:"none",data:[{yAxis:30,label:{formatter:"Meta contratos 30%",color:"#c9861a",fontSize:11},lineStyle:{color:"#c9861a",type:"dashed",width:1.5}}]}});
   return chart({...baseOpt(),
     tooltip:{...baseOpt().tooltip,formatter:p=>p[0].name+"<br>"+p.map(x=>`${x.marker}${x.seriesName}: <b>${x.value===null?"—":x.seriesType==="line"?x.value+"%":fmt(x.value)}</b>`).join("<br>")},
     legend:{bottom:0,icon:"roundRect",itemWidth:10,itemHeight:10,textStyle:{fontSize:11,color:C().mute}},
-    grid:{left:8,right:hayTasa?20:16,top:28,bottom:34,containLabel:true},
+    grid:{left:8,right:16,top:18,bottom:30,containLabel:true},
     xAxis:{type:"category",data:MESES.map(m=>m.slice(0,3)),...ejeX()},
-    yAxis:ejes,series
-  },300);
+    yAxis:ejes, series
+  },290);
 }
 function graficoResumen(S){
-  const B=base(S.e), tAcc=tasa(S.e.filter(r=>r.acc).length,B), tCm=tasa(S.cm.length,B);
-  const botones=`<div class="chart-switch"><button class="on" disabled title="Las entregas permanecen siempre visibles">Entregas</button><button class="${grafResumen.accesorios?'on':''}" onclick="cambiarGrafResumen('accesorios')">+ Tasa accesorios</button><button class="${grafResumen.contratos?'on':''}" onclick="cambiarGrafResumen('contratos')">+ Tasa contratos</button></div>`;
-  const activas=[]; if(grafResumen.accesorios)activas.push(`accesorios ${tAcc}%`); if(grafResumen.contratos)activas.push(`contratos ${tCm}%`);
-  const detalle=activas.length?`Entregas + ${activas.join(" + ")}`:"Entregas mensuales";
-  return `${botones}<div class="chart-headline"><div><h3 style="margin:0">Evolución mensual</h3><p class="sub">${detalle}. Las barras quedan fijas y podés superponer una o las dos tasas.</p></div><div class="metric">${fmt(S.e.length)}<small>entregas</small></div></div>${graficoCombinado()}<div class="chart-note"><span><b>Barras:</b> entregas ${F.anio}${grafResumen.accesorios?' · <b>Línea azul:</b> tasa accesorios':''}${grafResumen.contratos?' · <b>Línea verde:</b> tasa contratos':''}</span><span>${grafResumen.contratos?'La línea punteada marca la meta contractual del 30%.':'Activá Contratos para ver la meta del 30%.'}</span></div>`;
+  const campo=grafResumen==='accesorios'?'acc':grafResumen==='contratos'?'cm':null;
+  const total=campo&&S.e.length?Math.round(S.e.filter(r=>r[campo]).length/S.e.length*100):null;
+  const botones=`<div class="chart-switch"><button class="${grafResumen==='accesorios'?'on':''}" onclick="cambiarGrafResumen('accesorios')">Tasa accesorios</button><button class="${grafResumen==='contratos'?'on':''}" onclick="cambiarGrafResumen('contratos')">Tasa contratos</button></div>`;
+  const detalle=grafResumen==='ninguna'?'Entregas mensuales':grafResumen==='accesorios'?`Entregas + tasa de accesorios · ${total}% en el período`:`Entregas + tasa de contratos · ${total}% en el período · meta 30%`;
+  return `${botones}<div class="chart-headline"><div><h3 style="margin:0">Entregas por mes</h3><p class="sub">${detalle}. Las barras permanecen fijas; los botones superponen la tasa elegida.</p></div><div class="metric">${fmt(S.e.length)}<small>entregas</small></div></div>${graficoCombinado(grafResumen)}<div class="chart-note"><span><b>Barras:</b> entregas ${F.anio}${grafResumen!=='ninguna'?` · <b>Línea:</b> ${grafResumen==='accesorios'?'tasa accesorios':'tasa contratos'}`:''}</span><span>Volvé a presionar el botón activo para ocultar la línea.</span></div>`;
 }
-function cambiarGrafResumen(tipo){
-  if(tipo==='accesorios'||tipo==='contratos')grafResumen[tipo]=!grafResumen[tipo];
-  const el=document.getElementById('grafResumen');
-  if(el){el.innerHTML=graficoResumen(sets());pintarGraficos()}
-}
+function cambiarGrafResumen(tipo){grafResumen=(grafResumen===tipo?'ninguna':tipo);const el=document.getElementById('grafResumen');if(el){el.innerHTML=graficoResumen(sets());pintarGraficos()}}
 
 const pillPct=(p,a=30,b=15)=>`<span class="pill ${p>=a?"p-ok":p>=b?"p-w":"p-b"}">${p}%</span>`;
 function tabla(cols,rows,id){
@@ -732,6 +741,10 @@ MOD.resumen={ic:"🏠",t:"Resumen",d:"Cómo vamos en el período y qué conviene
   const vend={};S.e.forEach(r=>{const v=vend[r.vend]||(vend[r.vend]={n:0,cm:0});v.n++;v.cm+=r.cm});
   const sinCm=Object.entries(vend).filter(([k,v])=>k!=="Sin dato"&&v.n>=5&&!v.cm).map(([k])=>k);
   if(sinCm.length)A.push(["n",`Vendedores con 5 o más entregas y ningún contrato`,sinCm.join(" · "),"vendedores"]);
+  const trab=UNI.filter(x=>!x.cert&&!x.pago&&x.estado!=="Entregada");
+  if(trab.length)A.push(["b",`${trab.length} unidades sin certificado ni pago a fábrica`,`No deben salir del concesionario. ${trab.filter(x=>x.suc==="Jujuy").length} están en Jujuy.`,"unidades"]);
+  const fsent=UNI.filter(x=>x.estado==="Facturada sin entregar");
+  if(fsent.length>15)A.push(["w",`${fsent.length} unidades facturadas sin entregar`,`Ya se vendieron y siguen ocupando patio.`,"unidades"]);
   const sd=S.e.filter(r=>r.vend==="Sin dato").length;
   if(sd)A.push(["n",`${sd} entregas sin vendedor cargado`,`Completar el vendedor en ENTR. mejora el análisis por vendedor.`,"entregas"]);
   const nov=S.rc.filter(r=>r.nov).length, novA=S.rcA.filter(r=>r.nov).length;
@@ -740,7 +753,7 @@ MOD.resumen={ic:"🏠",t:"Resumen",d:"Cómo vamos en el período y qué conviene
 
   CSV=()=>[["Resumen",perTxt()],["Entregas",S.e.length],["Recepciones",S.rc.length],["Envíos",S.v.length],["Contratos vendidos",S.cm.length],["Penetración de contratos %",pen],["Accesorios facturados $",Math.round(pesosAc)],["Días promedio en stock",prom(ds)],[],["Alertas"],...A.map(a=>[a[1],a[2]])];
 
-  return `<p class="frase">${frase}</p><p class="sub">${perTxt()} · comparado con el mismo período del año anterior · último dato disponible: ${fdia(ULT)}</p>
+  return `<p class="frase">${frase}</p><p class="sub">${perTxt()} · comparado con el mismo período del año anterior${enCurso?` · datos al ${fdia(ULT)}`:""}</p>
   <p class="sub" style="margin-bottom:-6px">Las tasas se calculan sobre las entregas de Venta Tradicional, Planes de Ahorro y Venta Corporativa (${B} en el período). Mayorista queda fuera de la base, pero lo que se le vendió suma arriba: por eso la tasa puede superar el 100%.</p>
   <div class="kpis">
     ${kpi(fmt(S.e.length),"Entregas",delta(S.e.length,S.eA.length))}
@@ -851,7 +864,7 @@ MOD.accesorios={ic:"🧰",t:"Accesorios",d:"Facturación y colocación, por fech
     <div class="card"><h3>Facturación mes a mes <span>${F.anio}</span></h3>${(()=>{const a=new Array(12).fill(null);ACP.forEach(r=>{if(+r.f.slice(0,4)===F.anio){const m=+r.f.slice(5,7)-1;a[m]=(a[m]||0)+r.t}});return area(a,mill)})()}</div>
     <div class="card"><h3>Los 25 más colocados <span>tamaño = cantidad</span></h3>${treemap(items)}</div>
   </div>
-  <p class="sub">Los filtros de modelo, canal y vendedor no aplican a este módulo: la hoja ACC. no trae esos datos por trabajo.</p>`;
+  <p class="sub">Facturación: solo las OR de accesorios abiertas por Javier Reynoso o por Pablo; la hoja OR trae las de todo el taller. Los filtros de modelo, canal y vendedor no aplican acá: la hoja ACC. no trae esos datos por trabajo.</p>`;
 }};
 
 MOD.recepciones={ic:"🚚",t:"Recepciones",d:"Unidades recibidas de fábrica y novedades al llegar",r(S){
@@ -861,11 +874,20 @@ MOD.recepciones={ic:"🚚",t:"Recepciones",d:"Unidades recibidas de fábrica y n
     ${kpi(fmt(r.length),"Unidades recibidas",delta(r.length,S.rcA.length))}
     ${kpi(fmt(nov.length),"Llegaron con novedad")}
     ${kpi((r.length?Math.round(nov.length/r.length*100):0)+"%","Tasa de novedad",S.rcA.length?`<div class="d">año ant.: ${Math.round(S.rcA.filter(x=>x.nov).length/S.rcA.length*100)}%</div>`:"")}
+    ${kpi(fmt(r.filter(x=>x.origen==="De fábrica").length),"Llegaron de fábrica","<div class=\"d\">recibidas por el equipo de Jujuy</div>")}
+    ${kpi(fmt(r.filter(x=>x.origen==="De Salta").length),"Llegaron de Salta","<div class=\"d\">recepcionadas por personal de Salta</div>")}
+    ${kpi(fmt(VIAJE.length),"En viaje ahora","<div class=\"d\">salieron y todavía no llegaron</div>")}
   </div>
+  ${VIAJE.length?`<div class="card" style="margin-bottom:14px"><h3>Unidades en viaje <span>ordenadas por fecha de salida</span></h3>
+    ${tabla([{t:"Salió",v:x=>fdia(x.f)},{t:"Días en viaje",r:1,h:x=>x.f?`<span class="pill ${dDesde(x.f)>10?"p-w":"p-ok"}">${dDesde(x.f)}</span>`:"—"},{t:"Interno",v:x=>x.int||"—"},{t:"Modelo",v:x=>x.modelo},{t:"Equipo",v:x=>x.equipo||"—"}],[...VIAJE].sort((a,b)=>a.f.localeCompare(b.f)))}</div>`:""}
   <div class="g g3">
     <div class="card"><h3>Por modelo <span>tocá para filtrar</span></h3>${barras(contar(r,x=>x.mod),12,fmt,"filtMod")}</div>
     <div class="card"><h3>Tipo de novedad</h3>${barras(contar(nov.filter(x=>x.clas),x=>x.clas),6)}</div>
     <div class="card"><h3>Novedad por modelo</h3>${barras(contar(nov,x=>x.mod),10)}</div>
+  </div>
+  <div class="g g2">
+    <div class="card"><h3>De dónde llegaron</h3>${dona(contar(r,x=>x.origen),{n:String(r.length)})}</div>
+    <div class="card"><h3>Quién las recepcionó</h3>${barras(contar(r.filter(x=>x.quien),x=>tit(x.quien)),10)}</div>
   </div>
   <div class="card"><h3>Recepciones por mes <span>${F.anio} · OK contra novedad</span></h3>${(()=>{
     const ok=new Array(12).fill(0), nv=new Array(12).fill(0);
@@ -913,6 +935,43 @@ MOD.stock={ic:"🅿️",t:"Stock físico",d:"Foto de hoy de la hoja BOX · no de
       {t:"Días desde ZP",r:1,h:r=>zpOk(r.dzp)?r.dzp:(r.zp?'<span class="pill p-w">revisar</span>':"—")},
       {t:"Estado",h:r=>r.op==="OK"?'<span class="pill p-ok">OK</span>':'<span class="pill p-b">Con novedad</span>'},
       {t:"Plan de control",h:r=>r.ctrl?'<span class="pill p-ok">Sí</span>':'<span class="pill p-b">Falta ZP</span>'}],st,"tStk")}
+  </div>`;
+}};
+
+MOD.unidades={ic:"🚙",t:"Stock 0 km",d:"Reporte de SIAC · Jujuy, Salta y reventas · no depende del mes elegido",r(S){
+  const u=UNI.filter(x=>!F.mod||x.mod===F.mod);
+  const viaje=u.filter(x=>x.estado==="En viaje");
+  const disp=u.filter(x=>x.estado==="Disponible");
+  const fse=u.filter(x=>x.estado==="Facturada sin entregar");
+  const trabada=u.filter(x=>!x.cert&&!x.pago&&x.estado!=="Entregada");
+  const piso=u.filter(x=>x.destino);
+  CSV=()=>[["Interno","Modelo","Color","Destino","Sucursal","Estado","Certificado","Pago a fábrica","Vendedor"],
+    ...u.map(x=>[x.int,x.modelo,x.color,x.destino||"En viaje",x.suc,x.estado,x.cert?"Sí":"No",x.pago?"Sí":"No",x.vend])];
+  return `<div class="kpis">
+    ${kpi(fmt(u.length),"Unidades en el reporte","<div class=\"d\">Jujuy + Salta + reventas</div>")}
+    ${kpi(fmt(disp.length),"Disponibles para vender","<div class=\"d\">en piso, sin facturar</div>")}
+    ${kpi(fmt(fse.length),"Facturadas sin entregar","<div class=\"d\">ya vendidas, ocupan patio</div>")}
+    ${kpi(fmt(viaje.length),"En viaje",`<div class="d">${viaje.filter(x=>x.suc==="Jujuy").length} a Jujuy · ${viaje.filter(x=>x.suc==="Salta").length} a Salta</div>`)}
+    ${kpi(fmt(trabada.length),"No pueden salir","<div class=\"d\">sin certificado ni pago</div>")}
+  </div>
+  ${trabada.length?`<div class="card" style="border-left:4px solid var(--bad);margin-bottom:14px">
+    <h3>⚠ Unidades que no deben salir del concesionario <span>${trabada.filter(x=>x.suc==="Jujuy").length} en Jujuy</span></h3>
+    <p class="sub" style="margin-bottom:10px">No tienen certificado ni fecha de pago a fábrica.</p>
+    ${tabla([{t:"Interno",v:x=>x.int},{t:"Modelo",v:x=>x.modelo},{t:"Destino",v:x=>x.destino||"En viaje"},{t:"Sucursal",v:x=>x.suc},
+      {t:"Estado",h:x=>`<span class="pill ${x.estado==="Disponible"?"p-ok":"p-w"}">${x.estado}</span>`}],trabada)}</div>`:""}
+  <div class="g g3">
+    <div class="card"><h3>Situación de cada unidad</h3>${dona(contar(u,x=>x.estado),{n:String(u.length)})}</div>
+    <div class="card"><h3>Dónde están <span>tocá para ver</span></h3>${barras(contar(piso,x=>tit(x.destino)),12)}</div>
+    <div class="card"><h3>Por modelo <span>tocá para filtrar</span></h3>${barras(contar(u,x=>x.mod),12,fmt,"filtMod")}</div>
+  </div>
+  <div class="card"><h3>Detalle del stock <span>${fmt(u.length)} unidades</span></h3>
+    <div class="tbar"><input placeholder="Buscar interno, modelo, destino…" oninput="buscarTabla(this,'tUni')"></div>
+    ${tabla([{t:"Interno",v:x=>x.int},{t:"Modelo",v:x=>x.modelo},{t:"Color",v:x=>x.color},
+      {t:"Destino",v:x=>x.destino||"— en viaje —"},{t:"Suc.",v:x=>x.suc},
+      {t:"Estado",h:x=>`<span class="pill ${x.estado==="Disponible"?"p-ok":x.estado==="En viaje"?"p-n":x.estado==="Entregada"?"p-n":"p-w"}">${x.estado}</span>`},
+      {t:"Certif.",h:x=>x.cert?'<span class="pill p-ok">Sí</span>':'<span class="pill p-b">No</span>'},
+      {t:"Pago",h:x=>x.pago?'<span class="pill p-ok">Sí</span>':'<span class="pill p-b">No</span>'},
+      {t:"Vendedor",v:x=>x.vend}],u,"tUni")}
   </div>`;
 }};
 
@@ -997,19 +1056,32 @@ function cerrarSesion(msg){
   localStorage.removeItem(TOKEN_KEY); DATA=null;
   mostrarLogin(msg||"Tu sesión venció. Ingresá la clave de nuevo.");
 }
+// Cortina de carga: mientras el Apps Script arma los datos, el portal avisa que está
+// trabajando en vez de quedarse congelado.
+function mostrarCargando(si){
+  let c=document.getElementById("cargando");
+  if(si){
+    if(!c){
+      c=document.createElement("div"); c.id="cargando"; c.className="cargando";
+      c.innerHTML='<div class="cbox"><div class="spin"></div><b>Actualizando datos…</b><p>Leyendo las hojas del libro. Suele tardar unos segundos.</p></div>';
+      document.body.appendChild(c);
+    }
+    c.classList.remove("oculto");
+  }else if(c){ c.classList.add("oculto"); }
+}
 async function cargar(refrescar){
   const tk=localStorage.getItem(TOKEN_KEY);
   if(!tk){mostrarLogin("");return}
-  const b=document.getElementById("body");
-  b.innerHTML='<div class="card"><h3>Cargando datos del sector…</h3><p class="sub">Un momento, se están leyendo las hojas del libro.</p></div>';
+  mostrarCargando(true);
   try{
     const j=await pedirJSON(API_URL+"?accion=gestion&token="+encodeURIComponent(tk)+(refrescar?"&refrescar=1":"")+"&t="+Date.now());
     if(!j.ok&&j.error==="SIN_AUTORIZACION"){cerrarSesion();return}
     if(!j.ok)throw new Error(j.error||"Error desconocido");
-    DATA=j.datos; prepararDatos(); init();
+    DATA=j.datos; prepararDatos(); init(); mostrarCargando(false);
   }catch(ex){
     console.error("[Gestión] Error al cargar:",ex);
-    b.innerHTML='<div class="card"><h3>No se pudieron cargar los datos</h3><p class="sub">Revisá la conexión y volvé a intentar. Si sigue igual, puede faltar implementar la versión nueva del Apps Script.</p><button class="btn pri" style="margin-top:10px" onclick="cargar(1)">Reintentar</button></div>';
+    mostrarCargando(false);
+    document.getElementById("body").innerHTML='<div class="card"><h3>No se pudieron cargar los datos</h3><p class="sub">Revisá la conexión y volvé a intentar. Si sigue igual, puede faltar implementar la versión nueva del Apps Script.</p><button class="btn pri" style="margin-top:10px" onclick="cargar(1)">Reintentar</button></div>';
   }
 }
 // Tema: se guarda en el navegador y los gráficos se redibujan con la paleta nueva.
