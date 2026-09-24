@@ -275,6 +275,22 @@ th{z-index:2}
 :root[data-tema="oscuro"] .card h3 span,:root[data-tema="oscuro"] .k .d{color:var(--mute)}
 :root[data-tema="oscuro"] td,:root[data-tema="oscuro"] .a p{color:var(--ink)}
 @media print{.cargando{display:none!important}}
+
+/* Filtros en botones */
+.btns{display:inline-flex;gap:3px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px}
+.btns button{all:unset;cursor:pointer;padding:5px 10px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink2);white-space:nowrap}
+.btns button:hover{background:var(--paper)}
+.btns button.on{background:var(--vw);color:#fff;font-weight:600}
+:root[data-tema="oscuro"] .btns button.on{background:var(--acc);color:#04101f}
+@media(max-width:700px){.btns{width:100%;justify-content:space-between}.btns button{padding:6px 7px;font-size:12px}}
+@media print{.btns{display:none}}
+
+/* Tarjetas de cumplimiento con aro */
+.aro-card{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.aro-t{font-size:13px;font-weight:600;color:var(--ink2)}
+.aro-n{font-family:var(--disp);font-weight:700;font-size:38px;line-height:1.05;margin-top:4px}
+.aro-d{font-size:12px;color:var(--mute);margin-top:2px}
+.aro{width:64px;height:64px;flex:none}
 </style>
 </head>
 <body>
@@ -310,8 +326,8 @@ th{z-index:2}
     </div>
     <div class="filt">
       <div class="seg" id="modo"><button data-m="mes" class="on">Mes</button><button data-m="anio">Acumulado año</button></div>
-      <select id="fMes"></select>
-      <select id="fAnio"></select>
+      <div class="btns" id="fAnio"></div>
+      <div class="btns" id="fMes"></div>
       <select id="fMod"><option value="">Todos los modelos</option></select>
       <select id="fCanal"><option value="">Todos los canales</option></select>
       <select id="fVend"><option value="">Todos los vendedores</option></select>
@@ -611,6 +627,17 @@ function delta(a,b,sufijo=""){
   if(!p)return `<div class="d">= igual que el año ant. (${sufijo?sufijo(b):fmt(b)})</div>`;
   return `<div class="d ${p>0?"up":"dn"}">${p>0?"▲":"▼"} ${Math.abs(p)}% vs. año ant. (${sufijo?sufijo(b):fmt(b)})</div>`;
 }
+// Tarjeta grande de cumplimiento con aro de progreso.
+function tarjetaAro(titulo,valor,meta,detalle){
+  const c=valor>=meta?"var(--ok)":valor>=meta*.8?"var(--warn)":"var(--bad)";
+  const r=26, circ=2*Math.PI*r, av=Math.min(valor,meta*1.5)/(meta*1.5)*circ;
+  return `<div class="card aro-card">
+    <div><div class="aro-t">${titulo}</div><div class="aro-n" style="color:${c}">${valor}%</div><div class="aro-d">${detalle}</div></div>
+    <svg viewBox="0 0 64 64" class="aro"><circle cx="32" cy="32" r="${r}" fill="none" stroke="var(--line)" stroke-width="7"/>
+      <circle cx="32" cy="32" r="${r}" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round"
+        stroke-dasharray="${av} ${circ}" transform="rotate(-90 32 32)"/></svg>
+  </div>`;
+}
 const kpi=(n,l,d="")=>`<div class="k"><div class="n">${n}</div><div class="l">${l}</div>${d}</div>`;
 function columnas(fechas,dos=true,val){
   const a=new Array(12).fill(0),b=new Array(12).fill(0);
@@ -764,6 +791,11 @@ MOD.resumen={ic:"🏠",t:"Resumen",d:"Cómo vamos en el período y qué conviene
     ${kpi(tAcc+"%","Tasa de accesorios",`<div class="d">${S.e.filter(r=>r.acc).length} de ${B} entregas base</div>`)}
     ${kpi(mill(pesosAc),"Accesorios facturados",delta(pesosAc,pesosAcA,mill))}
     ${kpi(fmt(STK.length),"Stock físico hoy",`<div class="d">${STK.filter(r=>r.op==="OK").length} OK para entregar</div>`)}
+  </div>
+  <div class="g g3" style="margin-bottom:14px">
+    ${tarjetaAro("Contratos",pen,30,`${S.cm.length} vendidos · meta 30%`)}
+    ${tarjetaAro("Accesorios en la entrega",tAcc,50,`${S.e.filter(r=>r.acc).length} de ${B} entregas base`)}
+    ${tarjetaAro("Facturación de accesorios",DATA.objAcc?Math.round(pesosAc/((DATA.objAcc||0)*(F.modo==="mes"?1:(F.anio===+ULT.slice(0,4)?+ULT.slice(5,7):12)))*100):0,100,`${mill(pesosAc)} de ${mill((DATA.objAcc||0)*(F.modo==="mes"?1:(F.anio===+ULT.slice(0,4)?+ULT.slice(5,7):12)))}`)}
   </div>
   <div class="g g21">
     <div>${ritmo}<div class="card exec-chart" ${ritmo?'style="margin-top:14px"':""}><div id="grafResumen">${graficoResumen(S)}</div></div></div>
@@ -1012,14 +1044,16 @@ function render(){
 }
 function llenar(id,vals){const s=$(id),f=s.options[0].outerHTML;s.innerHTML=f+vals.map(v=>`<option>${esc(v)}</option>`).join("")}
 function init(){
-  $("fMes").innerHTML=MESES.map((m,i)=>`<option value="${i+1}">${m}</option>`).join("");
-  $("fAnio").innerHTML=[...new Set(ENT.map(r=>r.f.slice(0,4)))].sort().map(a=>`<option>${a}</option>`).join("");
-  $("fMes").value=F.mes; $("fAnio").value=F.anio;
+  // Meses y años como botones: se ven todas las opciones de una y en el celular
+  // se tocan mucho mejor que un desplegable.
+  $("fMes").innerHTML=MESES.map((m,i)=>`<button data-v="${i+1}">${m.slice(0,3)}</button>`).join("");
+  $("fAnio").innerHTML=[...new Set(ENT.map(r=>r.f.slice(0,4)))].sort().map(a=>`<button data-v="${a}">${a}</button>`).join("");
+  $("fMes").onclick=e=>{const b=e.target.closest("button");if(!b)return;F.mes=+b.dataset.v;marcarBotones();render()};
+  $("fAnio").onclick=e=>{const b=e.target.closest("button");if(!b)return;F.anio=+b.dataset.v;marcarBotones();render()};
+  marcarBotones();
   llenar("fMod",[...new Set([...ENT,...STK].map(r=>r.mod))].sort());
   llenar("fCanal",[...new Set(ENT.map(r=>r.canal))].sort());
   llenar("fVend",orden(contar(ENT,r=>r.vend)).map(x=>x[0]));
-  $("fMes").onchange=e=>{F.mes=+e.target.value;render()};
-  $("fAnio").onchange=e=>{F.anio=+e.target.value;render()};
   $("fMod").onchange=e=>{F.mod=e.target.value;render()};
   $("fCanal").onchange=e=>{F.canal=e.target.value;render()};
   $("fVend").onchange=e=>{F.vend=e.target.value;render()};
@@ -1101,6 +1135,10 @@ function aplicarTema(t){
   try{localStorage.setItem("pdiTema",t)}catch(e){}
 }
 function cambiarTema(){aplicarTema(oscuro()?"claro":"oscuro");render()}
+function marcarBotones(){
+  document.querySelectorAll("#fMes button").forEach(b=>b.classList.toggle("on",+b.dataset.v===F.mes));
+  document.querySelectorAll("#fAnio button").forEach(b=>b.classList.toggle("on",+b.dataset.v===F.anio));
+}
 function filtMod(v){F.mod=v;$("fMod").value=v;render()}
 function filtCanal(v){F.canal=v;$("fCanal").value=v;render()}
 function filtVend(v){F.vend=v;$("fVend").value=v;ir("entregas")}
