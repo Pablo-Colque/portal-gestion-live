@@ -415,7 +415,7 @@ function prepararDatos(){
   CMV=DATA.cmv.map(r=>({f:r[0],mom:r[1],mod:r[2],vend:r[3]}));
   UNI=(DATA.unidades||[]).map(r=>({int:r[0],modelo:r[1],mod:r[2],color:r[3],destino:r[4]||"",suc:r[5],cert:r[6],pago:r[7],fact:r[8],vend:r[9],entregada:r[10],
     estado:!r[4]?"En viaje":(r[10]?"Entregada":(r[8]?"Facturada sin entregar":"Disponible"))}));
-  VIAJE=(DATA.enViaje||[]).map(r=>({f:r[0],mod:r[1],equipo:r[2],modelo:r[3]||r[1],int:r[4]||""}));
+  VIAJE=(DATA.enViaje||[]).map(r=>({f:r[0],mod:r[1],equipo:r[2],modelo:r[3]||r[1],int:r[4]||"",estado:r[5]||""}));
   STK=DATA.stock.map(r=>({int:r[0],mod:r[1],modelo:r[2],rec:r[3],op:r[4],ctrl:r[5],zp:r[6],patio:dDesde(r[3]),dzp:dDesde(r[6])}));
   ULT=ENT.map(r=>r.f).sort().pop()||new Date().toISOString().slice(0,10);
   F.mes=+ULT.slice(5,7); F.anio=+ULT.slice(0,4);
@@ -889,7 +889,7 @@ MOD.recepciones={ic:"🚚",t:"Recepciones",d:"Unidades recibidas de fábrica y n
     ${kpi(fmt(VIAJE.length),"En viaje ahora","<div class=\"d\">salieron y todavía no llegaron</div>")}
   </div>
   ${VIAJE.length?`<div class="card" style="margin-bottom:14px"><h3>Unidades en viaje <span>ordenadas por fecha de salida</span></h3>
-    ${tabla([{t:"Salió",v:x=>fdia(x.f)},{t:"Días en viaje",r:1,h:x=>x.f?`<span class="pill ${dDesde(x.f)>10?"p-w":"p-ok"}">${dDesde(x.f)}</span>`:"—"},{t:"Interno",v:x=>x.int||"—"},{t:"Modelo",v:x=>x.modelo},{t:"Equipo",v:x=>x.equipo||"—"}],[...VIAJE].sort((a,b)=>a.f.localeCompare(b.f)))}</div>`:""}
+    ${tabla([{t:"Salió",v:x=>fdia(x.f)},{t:"Días en viaje",r:1,h:x=>x.f?`<span class="pill ${dDesde(x.f)>10?"p-w":"p-ok"}">${dDesde(x.f)}</span>`:"—"},{t:"Interno",v:x=>x.int||"—"},{t:"Modelo",v:x=>x.modelo},{t:"Equipo",v:x=>x.equipo||"—"},{t:"Situación",v:x=>tit(x.estado)}],[...VIAJE].sort((a,b)=>a.f.localeCompare(b.f)))}</div>`:""}
   <div class="g g3">
     <div class="card"><h3>Por modelo <span>tocá para filtrar</span></h3>${barras(contar(r,x=>x.mod),12,fmt,"filtMod")}</div>
     <div class="card"><h3>Tipo de novedad</h3>${barras(contar(nov.filter(x=>x.clas),x=>x.clas),6)}</div>
