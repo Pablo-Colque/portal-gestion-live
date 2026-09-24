@@ -854,8 +854,15 @@ MOD.accesorios={ic:"🧰",t:"Accesorios",d:"Facturación y colocación, por fech
   const items={};S.ac.forEach(r=>r.items.forEach(i=>items[i]=(items[i]||0)+1));
   const rk=orden(items,25);
   CSV=()=>[["Puesto","Accesorio","Colocaciones"],...rk.map(([k,v],i)=>[i+1,k,v])];
+  // Objetivo mensual de accesorios (viene del Apps Script). En acumulado se multiplica
+  // por los meses transcurridos del año.
+  const meses=F.modo==="mes"?1:(F.anio===+ULT.slice(0,4)?+ULT.slice(5,7):12);
+  const obj=(DATA.objAcc||0)*meses;
+  const cumpl=obj?Math.round($$/obj*100):0;
   return `<div class="kpis">
     ${kpi(mill($$),"Facturado en accesorios",delta($$,$$A,mill))}
+    ${kpi(obj?mill(obj):"—","Objetivo",`<div class="d">${F.modo==="mes"?"mensual":meses+" meses"}</div>`)}
+    ${kpi(cumpl+"%","Cumplimiento",`<div class="d ${cumpl>=100?"up":cumpl>=80?"":"dn"}">${cumpl>=100?"objetivo alcanzado":"faltan "+mill(Math.max(0,obj-$$))}</div>`)}
     ${kpi(fmt(S.ap.length),"OR de accesorios facturadas")}
     ${kpi(fmt(S.ac.length),"Trabajos cerrados")}
     ${kpi(S.ap.length?mill($$/S.ap.length):"—","Ticket promedio por OR")}
@@ -863,6 +870,9 @@ MOD.accesorios={ic:"🧰",t:"Accesorios",d:"Facturación y colocación, por fech
   <div class="g g2">
     <div class="card"><h3>Facturación mes a mes <span>${F.anio}</span></h3>${(()=>{const a=new Array(12).fill(null);ACP.forEach(r=>{if(+r.f.slice(0,4)===F.anio){const m=+r.f.slice(5,7)-1;a[m]=(a[m]||0)+r.t}});return area(a,mill)})()}</div>
     <div class="card"><h3>Los 25 más colocados <span>tamaño = cantidad</span></h3>${treemap(items)}</div>
+  </div>
+  <div class="g g2">
+    <div class="card"><h3>Facturación contra el objetivo <span>${obj?mill(obj):"sin objetivo"}</span></h3>${medidor(cumpl,100,"del objetivo")}</div>
   </div>
   <p class="sub">Facturación: solo las OR de accesorios abiertas por Javier Reynoso o por Pablo; la hoja OR trae las de todo el taller. Los filtros de modelo, canal y vendedor no aplican acá: la hoja ACC. no trae esos datos por trabajo.</p>`;
 }};
