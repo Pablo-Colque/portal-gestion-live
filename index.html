@@ -392,6 +392,8 @@ var yo={},mo={};var xo,_o=function(){function t(t,e,n){var i=this;this._sleepAft
    exactamente esta misma estructura y el resto del tablero no cambia. */
 let DATA=null;
 const API_URL="https://script.google.com/macros/s/AKfycbzBaK0kfhvF87YlxDJwjTYH9cBOheU74SM1Wbt6VdPAwXcV5vYFWTxEnBNqyj9WXxdemQ/exec";
+const CONTRATOS_LIVE_URL="https://script.google.com/macros/s/AKfycbyfQkaHr8xXagTnUwoOVW3xyQR-sEEokG2ko4WoZEOuETaDCWekck6O67jB8scOBIIvag/exec";
+let CM_LIVE=false, CM_LIVE_UPDATED="";
 const TOKEN_KEY="gestionToken";   // sesión propia, distinta a la del Portal PDI
 
 const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -690,7 +692,7 @@ function graficoCombinado(tipo){
 }
 function graficoResumen(S){
   const campo=grafResumen==='accesorios'?'acc':grafResumen==='contratos'?'cm':null;
-  const total=campo&&S.e.length?Math.round(S.e.filter(r=>r[campo]).length/S.e.length*100):null;
+  const total=grafResumen==='contratos'?tasa(S.cm.length,base(S.e)):(grafResumen==='accesorios'?tasa(S.e.filter(r=>r.acc).length,base(S.e)):null);
   const botones=`<div class="chart-switch"><button class="${grafResumen==='accesorios'?'on':''}" onclick="cambiarGrafResumen('accesorios')">Tasa accesorios</button><button class="${grafResumen==='contratos'?'on':''}" onclick="cambiarGrafResumen('contratos')">Tasa contratos</button></div>`;
   const detalle=grafResumen==='ninguna'?'Entregas mensuales':grafResumen==='accesorios'?`Entregas + tasa de accesorios · ${total}% en el período`:`Entregas + tasa de contratos · ${total}% en el período · meta 30%`;
   return `${botones}<div class="chart-headline"><div><h3 style="margin:0">Entregas por mes</h3><p class="sub">${detalle}. Las barras permanecen fijas; los botones superponen la tasa elegida.</p></div><div class="metric">${fmt(S.e.length)}<small>entregas</small></div></div>${graficoCombinado(grafResumen)}<div class="chart-note"><span><b>Barras:</b> entregas ${F.anio}${grafResumen!=='ninguna'?` · <b>Línea:</b> ${grafResumen==='accesorios'?'tasa accesorios':'tasa contratos'}`:''}</span><span>Volvé a presionar el botón activo para ocultar la línea.</span></div>`;
@@ -714,7 +716,7 @@ MOD.resumen={ic:"🏠",t:"Resumen",d:"Cómo vamos en el período y qué conviene
   const pen=tasa(S.cm.length,B), penA=tasa(S.cmA.length,BA);
   const tAcc=tasa(S.e.filter(r=>r.acc).length,B);
   const ds=S.e.map(r=>r.dias).filter(x=>x!==null);
-  const frase=`${F.modo==="mes"?`En ${MESES[F.mes-1].toLowerCase()}`:`En lo que va de ${F.anio}`} entregamos <b>${fmt(S.e.length)} unidades</b>, recibimos <b>${fmt(S.rc.length)}</b> de fábrica y despachamos <b>${fmt(S.v.length)}</b>. Se vendieron <b>${fmt(S.cm.length)} contratos</b> y se facturaron <b>${mill(pesosAc)}</b> en accesorios.${S.sal.length?` Además preparamos <b>${S.sal.length}</b> unidades para exhibición en salón.`:""}${ds.length?` Las unidades estuvieron en promedio <b>${prom(ds)} días</b> en stock.`:""}`;
+  const frase=`${F.modo==="mes"?`En ${MESES[F.mes-1].toLowerCase()}`:`En lo que va de ${F.anio}`} entregamos <b>${fmt(S.e.length)} unidades</b>, recibimos <b>${fmt(S.rc.length)}</b> de fábrica y despachamos <b>${fmt(S.v.length)}</b>. Se vendieron <b>${fmt(S.cm.length)} contratos</b>${CM_LIVE?` <span class="pill p-ok">LIVE Javier</span>`:""} y se facturaron <b>${mill(pesosAc)}</b> en accesorios.${S.sal.length?` Además preparamos <b>${S.sal.length}</b> unidades para exhibición en salón.`:""}${ds.length?` Las unidades estuvieron en promedio <b>${prom(ds)} días</b> en stock.`:""}`;
 
   // Ritmo del mes en curso
   let ritmo="";
@@ -767,7 +769,7 @@ MOD.resumen={ic:"🏠",t:"Resumen",d:"Cómo vamos en el período y qué conviene
   if(lento&&lento[1]>60)A.push(["w",`${lento[0]} es el modelo que más tarda en salir`,`${lento[1]} días promedio en stock en el período.`,"rotacion"]);
   const vend={};S.e.forEach(r=>{const v=vend[r.vend]||(vend[r.vend]={n:0,cm:0});v.n++;v.cm+=r.cm});
   const sinCm=Object.entries(vend).filter(([k,v])=>k!=="Sin dato"&&v.n>=5&&!v.cm).map(([k])=>k);
-  if(sinCm.length)A.push(["n",`Vendedores con 5 o más entregas y ningún contrato`,sinCm.join(" · "),"vendedores"]);
+  if(!CM_LIVE&&sinCm.length)A.push(["n",`Vendedores con 5 o más entregas y ningún contrato`,sinCm.join(" · "),"vendedores"]);
   const trab=UNI.filter(x=>!x.cert&&!x.pago&&x.estado!=="Entregada");
   if(trab.length)A.push(["b",`${trab.length} unidades sin certificado ni pago a fábrica`,`No deben salir del concesionario. ${trab.filter(x=>x.suc==="Jujuy").length} están en Jujuy.`,"unidades"]);
   const fsent=UNI.filter(x=>x.estado==="Facturada sin entregar");
@@ -870,7 +872,7 @@ MOD.contratos={ic:"📝",t:"Contratos",d:"Contratos de mantenimiento vendidos y 
     ${kpi(fmt(cm.filter(r=>r.mom!=="En la entrega").length),"Post entrega")}
     ${kpi(pen+"%","Tasa de contratos",`<div class="d">sobre ${B} entregas base</div>`)}
   </div>
-  <p class="sub" style="margin:-6px 0 12px">Vendidos: por fecha de venta del contrato, en todos los canales. Tasa: esos contratos sobre las entregas de Venta Tradicional, Planes de Ahorro y Venta Corporativa (${B} en el período). Mayorista no entra en la base. Meta: 30%.${pen>100?" La tasa supera el 100% porque se vendieron contratos post entrega de unidades entregadas en meses anteriores.":""}</p>
+  <p class="sub" style="margin:-6px 0 12px">Vendidos: por fecha de venta del contrato, en todos los canales. Tasa: esos contratos sobre las entregas de Venta Tradicional, Planes de Ahorro y Venta Corporativa (${B} en el período). Mayorista no entra en la base. Meta: 30%. <b>${CM_LIVE?"● LIVE desde planilla de Javier":"● Respaldo ENTR T/U"}</b>${pen>100?" La tasa supera el 100% porque se vendieron contratos post entrega de unidades entregadas en meses anteriores.":""}</p>
   <div class="g g3">
     <div class="card"><h3>Tasa contra la meta <span>meta 30%</span></h3>${medidor(pen,30,"tasa de contratos")}</div>
     <div class="card"><h3>Penetración por modelo</h3>${barras(Object.fromEntries(Object.entries(pm).filter(([,x])=>x.n>=2).map(([k,x])=>[k,Math.round(x.cm/x.n*100)])),12,x=>x+"%","filtMod")}</div>
@@ -1113,6 +1115,29 @@ function mostrarCargando(si){
     c.classList.remove("oculto");
   }else if(c){ c.classList.add("oculto"); }
 }
+// Contratos Javier LIVE: lee la planilla que se sincroniza cada vez que Javier guarda Excel.
+// DATA.cmv histórico sigue viniendo de ENTR (T = fecha de venta, U = 1). Para evitar duplicados,
+// los meses presentes en la planilla LIVE reemplazan ese mismo mes de ENTR; el resto queda histórico.
+function cargarContratosJavier(){
+  return new Promise((resolve,reject)=>{
+    const cb="__cmLive"+Date.now();
+    const sc=document.createElement("script");
+    const tm=setTimeout(()=>{limpiar();reject(new Error("Tiempo agotado leyendo contratos Javier"))},12000);
+    function limpiar(){clearTimeout(tm);try{delete window[cb]}catch(e){};sc.remove()}
+    window[cb]=j=>{limpiar();j&&j.ok?resolve(j):reject(new Error(j&&j.error||"Respuesta inválida de contratos Javier"))};
+    sc.onerror=()=>{limpiar();reject(new Error("No se pudo conectar con contratos Javier"))};
+    sc.src=CONTRATOS_LIVE_URL+"?callback="+encodeURIComponent(cb)+"&t="+Date.now();
+    document.head.appendChild(sc);
+  });
+}
+function integrarContratosJavier(j){
+  const live=(j.contracts||[]).filter(r=>r&&r[0]).map(r=>[r[0],tit(r[1]||"Contrato"),r[2]||"Sin dato",r[3]||"Sin dato"]);
+  if(!live.length){CM_LIVE=true;CM_LIVE_UPDATED=j.updatedAt||"";return}
+  const meses=new Set(live.map(r=>String(r[0]).slice(0,7)));
+  const hist=(DATA.cmv||[]).filter(r=>!meses.has(String(r[0]||"").slice(0,7)));
+  DATA.cmv=hist.concat(live).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+  CM_LIVE=true; CM_LIVE_UPDATED=j.updatedAt||"";
+}
 async function cargar(refrescar){
   const tk=localStorage.getItem(TOKEN_KEY);
   if(!tk){mostrarLogin("");return}
@@ -1121,7 +1146,9 @@ async function cargar(refrescar){
     const j=await pedirJSON(API_URL+"?accion=gestion&token="+encodeURIComponent(tk)+(refrescar?"&refrescar=1":"")+"&t="+Date.now());
     if(!j.ok&&j.error==="SIN_AUTORIZACION"){cerrarSesion();return}
     if(!j.ok)throw new Error(j.error||"Error desconocido");
-    DATA=j.datos; prepararDatos(); init(); mostrarCargando(false);
+    DATA=j.datos;
+    try{const cj=await cargarContratosJavier();integrarContratosJavier(cj)}catch(e){CM_LIVE=false;console.warn("[Gestión] Contratos Javier LIVE no disponibles; se usa ENTR T/U:",e)}
+    prepararDatos(); init(); mostrarCargando(false);
   }catch(ex){
     console.error("[Gestión] Error al cargar:",ex);
     mostrarCargando(false);
