@@ -392,8 +392,6 @@ var yo={},mo={};var xo,_o=function(){function t(t,e,n){var i=this;this._sleepAft
    exactamente esta misma estructura y el resto del tablero no cambia. */
 let DATA=null;
 const API_URL="https://script.google.com/macros/s/AKfycbzBaK0kfhvF87YlxDJwjTYH9cBOheU74SM1Wbt6VdPAwXcV5vYFWTxEnBNqyj9WXxdemQ/exec";
-const CONTRATOS_LIVE_URL="https://script.google.com/macros/s/AKfycbyfQkaHr8xXagTnUwoOVW3xyQR-sEEokG2ko4WoZEOuETaDCWekck6O67jB8scOBIIvag/exec";
-let CM_LIVE=false, CM_LIVE_UPDATED="";
 const TOKEN_KEY="gestionToken";   // sesión propia, distinta a la del Portal PDI
 
 const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -413,7 +411,7 @@ const dDesde=d=>d?Math.floor((HOY-new Date(d+"T00:00:00"))/864e5):null;
 const dEnt=r=>r[6]?Math.round((new Date(r[0])-new Date(r[6]))/864e5):null;
 
 // Normalización de filas (nombres legibles para el código)
-let TODAS,ENT,SALON,REC,VIA,ACC,ACP,CMV,STK,VIAJE,UNI,ULT;
+let TODAS,ENT,SALON,REC,VIA,ACC,ACP,CMV,STK,VIAJE,UNI,JAV,ULT;
 // Salón Lomas no es una entrega: la unidad pasa al salón como exhibición y esa fila se
 // borra cuando se vende de verdad. Se cuenta aparte, como preparación.
 const esSalon=r=>r.canal==="Salon Lomas";
@@ -433,6 +431,7 @@ function prepararDatos(){
   CMV=DATA.cmv.map(r=>({f:r[0],mom:r[1],mod:r[2],vend:r[3]}));
   UNI=(DATA.unidades||[]).map(r=>({int:r[0],modelo:r[1],mod:r[2],color:r[3],destino:r[4]||"",suc:r[5],cert:r[6],pago:r[7],fact:r[8],vend:r[9],entregada:r[10],
     estado:!r[4]?"En viaje":(r[10]?"Entregada":(r[8]?"Facturada sin entregar":"Disponible"))}));
+  JAV=(DATA.javier||[]).map(r=>({ent:r[0],fac:r[1],comprado:r[2],precio:r[3],motivo:(r[4]||"").trim(),mom:r[5],vin:r[6]}));
   VIAJE=(DATA.enViaje||[]).map(r=>({f:r[0],mod:r[1],equipo:r[2],modelo:r[3]||r[1],int:r[4]||"",estado:r[5]||""}));
   STK=DATA.stock.map(r=>({int:r[0],mod:r[1],modelo:r[2],rec:r[3],op:r[4],ctrl:r[5],zp:r[6],patio:dDesde(r[3]),dzp:dDesde(r[6])}));
   ULT=ENT.map(r=>r.f).sort().pop()||new Date().toISOString().slice(0,10);
@@ -692,7 +691,7 @@ function graficoCombinado(tipo){
 }
 function graficoResumen(S){
   const campo=grafResumen==='accesorios'?'acc':grafResumen==='contratos'?'cm':null;
-  const total=grafResumen==='contratos'?tasa(S.cm.length,base(S.e)):(grafResumen==='accesorios'?tasa(S.e.filter(r=>r.acc).length,base(S.e)):null);
+  const total=campo&&S.e.length?Math.round(S.e.filter(r=>r[campo]).length/S.e.length*100):null;
   const botones=`<div class="chart-switch"><button class="${grafResumen==='accesorios'?'on':''}" onclick="cambiarGrafResumen('accesorios')">Tasa accesorios</button><button class="${grafResumen==='contratos'?'on':''}" onclick="cambiarGrafResumen('contratos')">Tasa contratos</button></div>`;
   const detalle=grafResumen==='ninguna'?'Entregas mensuales':grafResumen==='accesorios'?`Entregas + tasa de accesorios · ${total}% en el período`:`Entregas + tasa de contratos · ${total}% en el período · meta 30%`;
   return `${botones}<div class="chart-headline"><div><h3 style="margin:0">Entregas por mes</h3><p class="sub">${detalle}. Las barras permanecen fijas; los botones superponen la tasa elegida.</p></div><div class="metric">${fmt(S.e.length)}<small>entregas</small></div></div>${graficoCombinado(grafResumen)}<div class="chart-note"><span><b>Barras:</b> entregas ${F.anio}${grafResumen!=='ninguna'?` · <b>Línea:</b> ${grafResumen==='accesorios'?'tasa accesorios':'tasa contratos'}`:''}</span><span>Volvé a presionar el botón activo para ocultar la línea.</span></div>`;
@@ -716,7 +715,7 @@ MOD.resumen={ic:"🏠",t:"Resumen",d:"Cómo vamos en el período y qué conviene
   const pen=tasa(S.cm.length,B), penA=tasa(S.cmA.length,BA);
   const tAcc=tasa(S.e.filter(r=>r.acc).length,B);
   const ds=S.e.map(r=>r.dias).filter(x=>x!==null);
-  const frase=`${F.modo==="mes"?`En ${MESES[F.mes-1].toLowerCase()}`:`En lo que va de ${F.anio}`} entregamos <b>${fmt(S.e.length)} unidades</b>, recibimos <b>${fmt(S.rc.length)}</b> de fábrica y despachamos <b>${fmt(S.v.length)}</b>. Se vendieron <b>${fmt(S.cm.length)} contratos</b>${CM_LIVE?` <span class="pill p-ok">LIVE Javier</span>`:""} y se facturaron <b>${mill(pesosAc)}</b> en accesorios.${S.sal.length?` Además preparamos <b>${S.sal.length}</b> unidades para exhibición en salón.`:""}${ds.length?` Las unidades estuvieron en promedio <b>${prom(ds)} días</b> en stock.`:""}`;
+  const frase=`${F.modo==="mes"?`En ${MESES[F.mes-1].toLowerCase()}`:`En lo que va de ${F.anio}`} entregamos <b>${fmt(S.e.length)} unidades</b>, recibimos <b>${fmt(S.rc.length)}</b> de fábrica y despachamos <b>${fmt(S.v.length)}</b>. Se vendieron <b>${fmt(S.cm.length)} contratos</b> y se facturaron <b>${mill(pesosAc)}</b> en accesorios.${S.sal.length?` Además preparamos <b>${S.sal.length}</b> unidades para exhibición en salón.`:""}${ds.length?` Las unidades estuvieron en promedio <b>${prom(ds)} días</b> en stock.`:""}`;
 
   // Ritmo del mes en curso
   let ritmo="";
@@ -769,7 +768,9 @@ MOD.resumen={ic:"🏠",t:"Resumen",d:"Cómo vamos en el período y qué conviene
   if(lento&&lento[1]>60)A.push(["w",`${lento[0]} es el modelo que más tarda en salir`,`${lento[1]} días promedio en stock en el período.`,"rotacion"]);
   const vend={};S.e.forEach(r=>{const v=vend[r.vend]||(vend[r.vend]={n:0,cm:0});v.n++;v.cm+=r.cm});
   const sinCm=Object.entries(vend).filter(([k,v])=>k!=="Sin dato"&&v.n>=5&&!v.cm).map(([k])=>k);
-  if(!CM_LIVE&&sinCm.length)A.push(["n",`Vendedores con 5 o más entregas y ningún contrato`,sinCm.join(" · "),"vendedores"]);
+  if(sinCm.length)A.push(["n",`Vendedores con 5 o más entregas y ningún contrato`,sinCm.join(" · "),"vendedores"]);
+  const tib=JAV.filter(x=>x.comprado===0&&/recordatorio|otro momento|no lo necesito|proximo mes|cierre de tarjeta|espera/i.test(x.motivo));
+  if(tib.length)A.push(["n",`${tib.length} clientes para volver a llamar por contrato`,`No dijeron que no: pidieron recordatorio o dijeron "en otro momento".`,"contratos"]);
   const trab=UNI.filter(x=>!x.cert&&!x.pago&&x.estado!=="Entregada");
   if(trab.length)A.push(["b",`${trab.length} unidades sin certificado ni pago a fábrica`,`No deben salir del concesionario. ${trab.filter(x=>x.suc==="Jujuy").length} están en Jujuy.`,"unidades"]);
   const fsent=UNI.filter(x=>x.estado==="Facturada sin entregar");
@@ -866,21 +867,44 @@ MOD.contratos={ic:"📝",t:"Contratos",d:"Contratos de mantenimiento vendidos y 
   const pm={};e.filter(enBase).forEach(r=>{const x=pm[r.mod]||(pm[r.mod]={n:0,cm:0});x.n++;x.cm+=r.cm});
   const vr=Object.entries(v).sort((a,b)=>b[1].n-a[1].n);
   CSV=()=>[["Vendedor","Entregas","Con contrato","% penetración"],...vr.map(([k,x])=>[k,x.n,x.cm,Math.round(x.cm/x.n*100)])];
+  // Datos de la planilla de Javier para el período elegido (por fecha de factura)
+  const jv=JAV.filter(x=>x.fac&&inPer(x.fac));
+  const vendidos=jv.filter(x=>x.comprado===1);
+  const plata=vendidos.reduce((s,x)=>s+x.precio,0);
+  // Ofrecidos del período: por fecha de entrega, que es cuando se ofrece el contrato
+  const ofrec=JAV.filter(x=>x.ent&&inPer(x.ent));
+  const noQuiso=ofrec.filter(x=>x.comprado===0);
+  // "Todavía no": los que no dijeron que no de verdad, hay que volver a llamarlos
+  const tibios=JAV.filter(x=>x.comprado===0&&/recordatorio|otro momento|no lo necesito|proximo mes|cierre de tarjeta|espera/i.test(x.motivo));
   return `<div class="kpis">
     ${kpi(fmt(cm.length),"Contratos vendidos",delta(cm.length,S.cmA.length))}
+    ${plata?kpi(mill(plata),"Facturado en contratos",`<div class="d">ticket ${mill(plata/Math.max(vendidos.length,1))}</div>`):""}
     ${kpi(fmt(cm.filter(r=>r.mom==="En la entrega").length),"En la entrega")}
     ${kpi(fmt(cm.filter(r=>r.mom!=="En la entrega").length),"Post entrega")}
     ${kpi(pen+"%","Tasa de contratos",`<div class="d">sobre ${B} entregas base</div>`)}
+    ${ofrec.length?kpi(tasa(ofrec.filter(x=>x.comprado===1).length,ofrec.length)+"%","Cierre del período",`<div class="d">${ofrec.filter(x=>x.comprado===1).length} de ${ofrec.length} entregas ya compraron</div>`):""}
   </div>
-  <p class="sub" style="margin:-6px 0 12px">Vendidos: por fecha de venta del contrato, en todos los canales. Tasa: esos contratos sobre las entregas de Venta Tradicional, Planes de Ahorro y Venta Corporativa (${B} en el período). Mayorista no entra en la base. Meta: 30%. <b>${CM_LIVE?"● LIVE desde planilla de Javier":"● Respaldo ENTR T/U"}</b>${pen>100?" La tasa supera el 100% porque se vendieron contratos post entrega de unidades entregadas en meses anteriores.":""}</p>
+  <p class="sub" style="margin:-6px 0 12px">Vendidos: por fecha de venta del contrato, en todos los canales. Tasa: esos contratos sobre las entregas de Venta Tradicional, Planes de Ahorro y Venta Corporativa (${B} en el período). Mayorista no entra en la base. Meta: 30%.${pen>100?" La tasa supera el 100% porque se vendieron contratos post entrega de unidades entregadas en meses anteriores.":""}</p>
   <div class="g g3">
     <div class="card"><h3>Tasa contra la meta <span>meta 30%</span></h3>${medidor(pen,30,"tasa de contratos")}</div>
     <div class="card"><h3>Penetración por modelo</h3>${barras(Object.fromEntries(Object.entries(pm).filter(([,x])=>x.n>=2).map(([k,x])=>[k,Math.round(x.cm/x.n*100)])),12,x=>x+"%","filtMod")}</div>
     <div class="card"><h3>Contratos por mes <span>por fecha de venta</span></h3>${columnas(CMV.filter(okCmv).map(r=>r.f))}</div>
   </div>
-  <div class="card"><h3>Penetración por vendedor</h3>
+  <div class="card" style="margin-bottom:14px"><h3>Penetración por vendedor</h3>
     ${tabla([{t:"Vendedor",v:r=>r[0]},{t:"Entregas base",r:1,v:r=>r[1].n},{t:"Con contrato",r:1,v:r=>r[1].cm},{t:"Tasa",r:1,h:r=>pillPct(tasa(r[1].cm,r[1].n))}],vr)}
-  </div>`;
+  </div>
+  ${noQuiso.length?`<div class="g g2">
+    <div class="card"><h3>Por qué no compraron <span>${noQuiso.length} en el período</span></h3>${barras(contar(noQuiso,x=>tit(x.motivo||"Sin motivo")),8)}</div>
+    <div class="card"><h3>Facturación de contratos por mes <span>${F.anio}</span></h3>${(()=>{
+      const a=new Array(12).fill(null);
+      JAV.filter(x=>x.comprado===1&&x.fac&&+x.fac.slice(0,4)===F.anio).forEach(x=>{const m=+x.fac.slice(5,7)-1;a[m]=(a[m]||0)+x.precio});
+      return area(a,mill)})()}</div>
+  </div>`:""}
+  ${tibios.length?`<div class="card" style="border-left:4px solid var(--warn)">
+    <h3>⏳ Para volver a llamar <span>${tibios.length} clientes</span></h3>
+    <p class="sub" style="margin-bottom:10px">No dijeron que no: pidieron recordatorio, dinero o "en otro momento". Son la venta más fácil que hay.</p>
+    ${tabla([{t:"Entregada",v:x=>fdia(x.ent)},{t:"Días desde la entrega",r:1,h:x=>`<span class="pill ${dDesde(x.ent)>90?"p-b":"p-w"}">${dDesde(x.ent)}</span>`},{t:"VIN",v:x=>x.vin},{t:"Qué dijo",v:x=>tit(x.motivo)}],[...tibios].sort((a,b)=>String(b.ent).localeCompare(String(a.ent))).slice(0,40))}
+  </div>`:""}`;
 }};
 
 MOD.accesorios={ic:"🧰",t:"Accesorios",d:"Facturación y colocación, por fecha de cierre de la OR",r(S){
@@ -1115,29 +1139,6 @@ function mostrarCargando(si){
     c.classList.remove("oculto");
   }else if(c){ c.classList.add("oculto"); }
 }
-// Contratos Javier LIVE: lee la planilla que se sincroniza cada vez que Javier guarda Excel.
-// DATA.cmv histórico sigue viniendo de ENTR (T = fecha de venta, U = 1). Para evitar duplicados,
-// los meses presentes en la planilla LIVE reemplazan ese mismo mes de ENTR; el resto queda histórico.
-function cargarContratosJavier(){
-  return new Promise((resolve,reject)=>{
-    const cb="__cmLive"+Date.now();
-    const sc=document.createElement("script");
-    const tm=setTimeout(()=>{limpiar();reject(new Error("Tiempo agotado leyendo contratos Javier"))},12000);
-    function limpiar(){clearTimeout(tm);try{delete window[cb]}catch(e){};sc.remove()}
-    window[cb]=j=>{limpiar();j&&j.ok?resolve(j):reject(new Error(j&&j.error||"Respuesta inválida de contratos Javier"))};
-    sc.onerror=()=>{limpiar();reject(new Error("No se pudo conectar con contratos Javier"))};
-    sc.src=CONTRATOS_LIVE_URL+"?callback="+encodeURIComponent(cb)+"&t="+Date.now();
-    document.head.appendChild(sc);
-  });
-}
-function integrarContratosJavier(j){
-  const live=(j.contracts||[]).filter(r=>r&&r[0]).map(r=>[r[0],tit(r[1]||"Contrato"),r[2]||"Sin dato",r[3]||"Sin dato"]);
-  if(!live.length){CM_LIVE=true;CM_LIVE_UPDATED=j.updatedAt||"";return}
-  const meses=new Set(live.map(r=>String(r[0]).slice(0,7)));
-  const hist=(DATA.cmv||[]).filter(r=>!meses.has(String(r[0]||"").slice(0,7)));
-  DATA.cmv=hist.concat(live).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
-  CM_LIVE=true; CM_LIVE_UPDATED=j.updatedAt||"";
-}
 async function cargar(refrescar){
   const tk=localStorage.getItem(TOKEN_KEY);
   if(!tk){mostrarLogin("");return}
@@ -1146,9 +1147,7 @@ async function cargar(refrescar){
     const j=await pedirJSON(API_URL+"?accion=gestion&token="+encodeURIComponent(tk)+(refrescar?"&refrescar=1":"")+"&t="+Date.now());
     if(!j.ok&&j.error==="SIN_AUTORIZACION"){cerrarSesion();return}
     if(!j.ok)throw new Error(j.error||"Error desconocido");
-    DATA=j.datos;
-    try{const cj=await cargarContratosJavier();integrarContratosJavier(cj)}catch(e){CM_LIVE=false;console.warn("[Gestión] Contratos Javier LIVE no disponibles; se usa ENTR T/U:",e)}
-    prepararDatos(); init(); mostrarCargando(false);
+    DATA=j.datos; prepararDatos(); init(); mostrarCargando(false);
   }catch(ex){
     console.error("[Gestión] Error al cargar:",ex);
     mostrarCargando(false);
