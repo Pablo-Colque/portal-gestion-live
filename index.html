@@ -431,9 +431,12 @@ function prepararDatos(){
   CMV=DATA.cmv.map(r=>({f:r[0],mom:r[1],mod:r[2],vend:r[3]}));
   UNI=(DATA.unidades||[]).map(r=>({int:r[0],modelo:r[1],mod:r[2],color:r[3],destino:r[4]||"",suc:r[5],cert:r[6],pago:r[7],fact:r[8],vend:r[9],entregada:r[10],
     estado:!r[4]?"En viaje":(r[10]?"Entregada":(r[8]?"Facturada sin entregar":"Disponible"))}));
-  JAV=(DATA.javier||[]).map(r=>({ent:r[0],fac:r[1],comprado:r[2],precio:r[3],motivo:(r[4]||"").trim(),mom:r[5],vin:r[6]}));
+  JAV=(DATA.javier||[]).map(r=>({ent:r[0],fac:r[1],comprado:r[2],precio:r[3],motivo:(r[4]||"").trim(),mom:r[5],vin:r[6],mod:r[7]||"Sin dato"}));
   VIAJE=(DATA.enViaje||[]).map(r=>({f:r[0],mod:r[1],equipo:r[2],modelo:r[3]||r[1],int:r[4]||"",estado:r[5]||""}));
-  STK=DATA.stock.map(r=>({int:r[0],mod:r[1],modelo:r[2],rec:r[3],op:r[4],ctrl:r[5],zp:r[6],patio:dDesde(r[3]),dzp:dDesde(r[6])}));
+  STK=DATA.stock.map(r=>({int:r[0],mod:r[1],modelo:r[2],rec:r[3],op:r[4],ctrl:r[5],zp:r[6],
+    vin:r[7]||"",box:r[8]||"",llave:r[9]||"",manual:r[10]||"",ubic:r[11]||"",or:r[12]||"",
+    patio:dDesde(r[3]),dzp:dDesde(r[6])}));
+  STK.forEach(x=>x.buscar=[x.int,x.vin,x.modelo,x.or,x.box,x.llave,x.manual,x.ubic,x.op].join(" ").toLowerCase());
   ULT=ENT.map(r=>r.f).sort().pop()||new Date().toISOString().slice(0,10);
   F.mes=+ULT.slice(5,7); F.anio=+ULT.slice(0,4);
 }
@@ -569,11 +572,12 @@ function calendario(fechas,h=220){
   },h);
 }
 // Treemap: rectángulos proporcionales, mejor que 25 barritas.
-function treemap(obj,h=320){
+function treemap(obj,h=380){
   const e=orden(obj,25); if(!e.length)return '<div class="vacio">Sin datos.</div>';
   return chart({...baseOpt(),tooltip:{trigger:"item",...baseOpt().tooltip,formatter:p=>`${p.name}<br><b>${p.value}</b> colocaciones`},
     series:[{type:"treemap",roam:false,nodeClick:false,breadcrumb:{show:false},
-      label:{show:true,formatter:p=>p.value>=3?`{n|${p.name}}\n{v|${p.value}}`:"",rich:{n:{fontSize:11,color:"#fff"},v:{fontSize:15,fontWeight:700,color:"#fff"}}},
+      label:{show:true,overflow:"break",formatter:p=>`{n|${p.name}}\n{v|${p.value}}`,
+        rich:{n:{fontSize:10,lineHeight:12,color:"#fff"},v:{fontSize:14,lineHeight:16,fontWeight:700,color:"#fff"}}},
       itemStyle:{borderColor:C().fondo,borderWidth:2,gapWidth:2},
       color:oscuro()?["#5aa7ff","#3f83d6","#2f63a8","#24486f","#1b3a5c"]:["#001e50","#123a76","#1b6fe0","#4a8fe7","#84b4f0"],
       data:e.map(([k,v])=>({name:k,value:v}))}]
@@ -864,9 +868,13 @@ MOD.rotacion={ic:"⏱️",t:"Días en stock",d:"Desde que la unidad llega a Juju
 MOD.contratos={ic:"📝",t:"Contratos",d:"Contratos de mantenimiento vendidos y penetración sobre entregas",r(S){
   const cm=S.cm, e=S.e, B=base(e), pen=tasa(cm.length,B);
   const v={};e.filter(enBase).forEach(r=>{const x=v[r.vend]||(v[r.vend]={n:0,cm:0});x.n++;x.cm+=r.cm});
-  const pm={};e.filter(enBase).forEach(r=>{const x=pm[r.mod]||(pm[r.mod]={n:0,cm:0});x.n++;x.cm+=r.cm});
+  // Por modelo: si hay datos de Javier se usan, porque traen el VIN y son más precisos
+  const pm={};
+  if(JAV.length){ JAV.filter(x=>x.ent&&inPer(x.ent)&&x.mod!=="Sin dato").forEach(x=>{const y=pm[x.mod]||(pm[x.mod]={n:0,cm:0});y.n++;y.cm+=(x.comprado===1?1:0)}); }
+  else { e.filter(enBase).forEach(r=>{const x=pm[r.mod]||(pm[r.mod]={n:0,cm:0});x.n++;x.cm+=r.cm}); }
   const vr=Object.entries(v).sort((a,b)=>b[1].n-a[1].n);
-  CSV=()=>[["Vendedor","Entregas","Con contrato","% penetración"],...vr.map(([k,x])=>[k,x.n,x.cm,Math.round(x.cm/x.n*100)])];
+  CSV=()=>[["Fecha entrega","Fecha factura","VIN","Modelo","Compró","Precio","Motivo"],
+    ...JAV.filter(x=>x.ent&&inPer(x.ent)).map(x=>[fdia(x.ent),fdia(x.fac),x.vin,x.mod,x.comprado===1?"Sí":(x.comprado===0?"No":"Sin definir"),x.precio||"",x.motivo])];
   // Datos de la planilla de Javier para el período elegido (por fecha de factura)
   const jv=JAV.filter(x=>x.fac&&inPer(x.fac));
   const vendidos=jv.filter(x=>x.comprado===1);
@@ -890,9 +898,6 @@ MOD.contratos={ic:"📝",t:"Contratos",d:"Contratos de mantenimiento vendidos y 
     <div class="card"><h3>Penetración por modelo</h3>${barras(Object.fromEntries(Object.entries(pm).filter(([,x])=>x.n>=2).map(([k,x])=>[k,Math.round(x.cm/x.n*100)])),12,x=>x+"%","filtMod")}</div>
     <div class="card"><h3>Contratos por mes <span>por fecha de venta</span></h3>${columnas(CMV.filter(okCmv).map(r=>r.f))}</div>
   </div>
-  <div class="card" style="margin-bottom:14px"><h3>Penetración por vendedor</h3>
-    ${tabla([{t:"Vendedor",v:r=>r[0]},{t:"Entregas base",r:1,v:r=>r[1].n},{t:"Con contrato",r:1,v:r=>r[1].cm},{t:"Tasa",r:1,h:r=>pillPct(tasa(r[1].cm,r[1].n))}],vr)}
-  </div>
   ${noQuiso.length?`<div class="g g2">
     <div class="card"><h3>Por qué no compraron <span>${noQuiso.length} en el período</span></h3>${barras(contar(noQuiso,x=>tit(x.motivo||"Sin motivo")),8)}</div>
     <div class="card"><h3>Facturación de contratos por mes <span>${F.anio}</span></h3>${(()=>{
@@ -903,7 +908,10 @@ MOD.contratos={ic:"📝",t:"Contratos",d:"Contratos de mantenimiento vendidos y 
   ${tibios.length?`<div class="card" style="border-left:4px solid var(--warn)">
     <h3>⏳ Para volver a llamar <span>${tibios.length} clientes</span></h3>
     <p class="sub" style="margin-bottom:10px">No dijeron que no: pidieron recordatorio, dinero o "en otro momento". Son la venta más fácil que hay.</p>
-    ${tabla([{t:"Entregada",v:x=>fdia(x.ent)},{t:"Días desde la entrega",r:1,h:x=>`<span class="pill ${dDesde(x.ent)>90?"p-b":"p-w"}">${dDesde(x.ent)}</span>`},{t:"VIN",v:x=>x.vin},{t:"Qué dijo",v:x=>tit(x.motivo)}],[...tibios].sort((a,b)=>String(b.ent).localeCompare(String(a.ent))).slice(0,40))}
+    ${tabla([{t:"",h:x=>`<span class="pill ${prioridad(x)==="Llamar ahora"?"p-ok":prioridad(x)==="Esta semana"?"p-w":"p-n"}">${prioridad(x)==="Llamar ahora"?"📞 Llamar ahora":prioridad(x)}</span>`},
+      {t:"Entregada",v:x=>fdia(x.ent)},{t:"Días",r:1,h:x=>`<span class="pill ${dDesde(x.ent)>90?"p-b":"p-w"}">${dDesde(x.ent)}</span>`},
+      {t:"VIN",v:x=>x.vin},{t:"Modelo",v:x=>x.mod},{t:"Qué dijo",v:x=>tit(x.motivo)}],
+      [...tibios].sort((a,b)=>orden3(a)-orden3(b)||String(b.ent).localeCompare(String(a.ent))).slice(0,60))}
   </div>`:""}`;
 }};
 
@@ -927,10 +935,7 @@ MOD.accesorios={ic:"🧰",t:"Accesorios",d:"Facturación y colocación, por fech
   </div>
   <div class="g g2">
     <div class="card"><h3>Facturación mes a mes <span>${F.anio}</span></h3>${(()=>{const a=new Array(12).fill(null);ACP.forEach(r=>{if(+r.f.slice(0,4)===F.anio){const m=+r.f.slice(5,7)-1;a[m]=(a[m]||0)+r.t}});return area(a,mill)})()}</div>
-    <div class="card"><h3>Los 25 más colocados <span>tamaño = cantidad</span></h3>${treemap(items)}</div>
-  </div>
-  <div class="g g2">
-    <div class="card"><h3>Facturación contra el objetivo <span>${obj?mill(obj):"sin objetivo"}</span></h3>${medidor(cumpl,100,"del objetivo")}</div>
+    <div class="card"><h3>Los 25 accesorios más colocados <span>el tamaño es la cantidad</span></h3>${treemap(items)}</div>
   </div>
   <p class="sub">Facturación: solo las OR de accesorios abiertas por Javier Reynoso o por Pablo; la hoja OR trae las de todo el taller. Los filtros de modelo, canal y vendedor no aplican acá: la hoja ACC. no trae esos datos por trabajo.</p>`;
 }};
@@ -963,16 +968,16 @@ MOD.recepciones={ic:"🚚",t:"Recepciones",d:"Unidades recibidas de fábrica y n
     return apiladas(ok,nv,"Llegaron OK","Con novedad")})()}</div>`;
 }};
 
-MOD.envios={ic:"📦",t:"Envíos",d:"Unidades despachadas a Salta, Tartagal y subagentes",r(S){
+MOD.envios={ic:"📦",t:"Envíos",d:"Traslados en el camión de la empresa: sucursal Salta y mayoristas del interior",r(S){
   const v=S.v;
   CSV=()=>[["Destino","Unidades"],...orden(contar(v,x=>x.dest)).map(x=>x)];
   return `<div class="kpis">
     ${kpi(fmt(v.length),"Envíos",delta(v.length,S.vA.length))}
-    ${kpi(fmt(v.filter(x=>x.grp==="Salta Autosol").length),"A Salta Autosol")}
-    ${kpi(fmt(v.filter(x=>x.grp==="Subagentes / reventa").length),"A subagentes y reventa")}
+    ${kpi(fmt(v.filter(x=>x.grp==="Sucursal Salta").length),"A Sucursal Salta","<div class=\"d\">traslado entre concesionarios</div>")}
+    ${kpi(fmt(v.filter(x=>x.grp==="Mayorista del interior").length),"A mayoristas del interior","<div class=\"d\">Orán, Tartagal, Metán, Güemes</div>")}
   </div>
   <div class="g g3">
-    <div class="card"><h3>Por grupo</h3>${barras(contar(v,x=>x.grp),4)}</div>
+    <div class="card"><h3>Destino del traslado</h3>${dona(contar(v,x=>x.grp),{n:String(v.length)})}</div>
     <div class="card"><h3>Por destino</h3>${barras(contar(v,x=>x.dest),10)}</div>
     <div class="card"><h3>Por modelo <span>tocá para filtrar</span></h3>${barras(contar(v,x=>x.mod),10,fmt,"filtMod")}</div>
   </div>
@@ -997,8 +1002,11 @@ MOD.stock={ic:"🅿️",t:"Stock físico",d:"Foto de hoy de la hoja BOX · no de
     <div class="card"><h3>Antigüedad en patio</h3>${barras({"Hasta 30 días":st.filter(r=>r.patio<=30).length,"31 a 60 días":st.filter(r=>r.patio>30&&r.patio<=60).length,"61 a 90 días":st.filter(r=>r.patio>60&&r.patio<=90).length,"Más de 90 días":st.filter(r=>r.patio>90).length},4,fmt,null,true)}</div>
   </div>
   <div class="card"><h3>Unidades en patio <span>ordenadas por días desde la llegada</span></h3>
-    <div class="tbar"><input placeholder="Buscar interno o modelo…" oninput="buscarTabla(this,'tStk')"></div>
-    ${tabla([{t:"Interno",v:r=>r.int},{t:"Modelo",v:r=>r.modelo},{t:"Recepción",v:r=>fdia(r.rec)},
+    <div class="tbar"><input placeholder="Buscar por interno, VIN, modelo, OR, box, llave, manual o ubicación…" oninput="buscarTabla(this,'tStk')"></div>
+    ${tabla([{t:"Interno",v:r=>r.int},{t:"VIN",v:r=>r.vin},{t:"Modelo",v:r=>r.modelo},
+      {t:"OR",v:r=>r.or||"—"},{t:"Box",v:r=>r.box||"—"},{t:"Ubicación",v:r=>r.ubic||"—"},
+      {t:"Llave",v:r=>r.llave||"—"},{t:"Manual",v:r=>r.manual||"—"},
+      {t:"Recepción",v:r=>fdia(r.rec)},
       {t:"Días en patio",r:1,h:r=>r.patio===null?"—":`<span class="pill ${r.patio>90?"p-b":r.patio>60?"p-w":"p-ok"}">${r.patio}</span>`},
       {t:"Días desde ZP",r:1,h:r=>zpOk(r.dzp)?r.dzp:(r.zp?'<span class="pill p-w">revisar</span>':"—")},
       {t:"Estado",h:r=>r.op==="OK"?'<span class="pill p-ok">OK</span>':'<span class="pill p-b">Con novedad</span>'},
@@ -1055,9 +1063,11 @@ MOD.vendedores={ic:"👥",t:"Vendedores",d:"Cantidad y calidad de la entrega por
 
 /* ═══ NAVEGACIÓN Y FILTROS ═══ */
 let actual="resumen";
+// Orden del menú: primero lo del día a día, al final lo de análisis.
+const ORDEN=["resumen","entregas","envios","contratos","accesorios","recepciones","stock","unidades","vendedores","rotacion"];
 function armarNav(){
   const alertas=STK.filter(r=>r.patio>90||!r.ctrl).length;
-  $("nav").innerHTML=Object.entries(MOD).map(([k,m])=>`<button data-k="${k}" class="${k===actual?"on":""}" onclick="ir('${k}')"><span class="ic">${m.ic}</span>${m.t}${k==="stock"&&alertas?`<span class="bdg">${alertas}</span>`:""}</button>`).join("");
+  $("nav").innerHTML=ORDEN.filter(k=>MOD[k]).map(k=>[k,MOD[k]]).map(([k,m])=>`<button data-k="${k}" class="${k===actual?"on":""}" onclick="ir('${k}')"><span class="ic">${m.ic}</span>${m.t}${k==="stock"&&alertas?`<span class="bdg">${alertas}</span>`:""}</button>`).join("");
 }
 function ir(k){actual=k;armarNav();render();window.scrollTo(0,0)}
 function render(){
@@ -1161,6 +1171,16 @@ function aplicarTema(t){
   try{localStorage.setItem("pdiTema",t)}catch(e){}
 }
 function cambiarTema(){aplicarTema(oscuro()?"claro":"oscuro");render()}
+// Cuándo conviene llamar a cada uno, según lo que dijo y cuánto falta para fin de mes.
+function prioridad(x){
+  const hoy=new Date(), fin=new Date(hoy.getFullYear(),hoy.getMonth()+1,0);
+  const faltan=Math.ceil((fin-hoy)/864e5);
+  const m=(x.motivo||"").toLowerCase();
+  if(/recordatorio|cierre de tarjeta|proximo mes|margen tarjeta/.test(m)) return faltan<=7?"Llamar ahora":"Esta semana";
+  if(/otro momento|no lo necesito|dinero/.test(m)) return dDesde(x.ent)>60?"Llamar ahora":"Más adelante";
+  return "Esta semana";
+}
+const orden3=x=>({"Llamar ahora":0,"Esta semana":1,"Más adelante":2})[prioridad(x)];
 function marcarBotones(){
   document.querySelectorAll("#fMes button").forEach(b=>b.classList.toggle("on",+b.dataset.v===F.mes));
   document.querySelectorAll("#fAnio button").forEach(b=>b.classList.toggle("on",+b.dataset.v===F.anio));
