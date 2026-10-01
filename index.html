@@ -430,6 +430,7 @@ function prepararDatos(){
   ACP=DATA.accPesos.map(r=>({f:r[0],t:r[1]}));
   CMV=DATA.cmv.map(r=>({f:r[0],mom:r[1],mod:r[2],vend:r[3]}));
   UNI=(DATA.unidades||[]).map(r=>({int:r[0],modelo:r[1],mod:r[2],color:r[3],destino:r[4]||"",suc:r[5],cert:r[6],pago:r[7],fact:r[8],vend:r[9],entregada:r[10],
+    sucVenta:r[11]||"",
     estado:!r[4]?"En viaje":(r[10]?"Entregada":(r[8]?"Facturada sin entregar":"Disponible"))}));
   JAV=(DATA.javier||[]).map(r=>({ent:r[0],fac:r[1],comprado:r[2],precio:r[3],motivo:(r[4]||"").trim(),mom:r[5],vin:r[6],mod:r[7]||"Sin dato"}));
   VIAJE=(DATA.enViaje||[]).map(r=>({f:r[0],mod:r[1],equipo:r[2],modelo:r[3]||r[1],int:r[4]||"",estado:r[5]||""}));
@@ -663,8 +664,13 @@ function columnas(fechas,dos=true,val){
 
 let grafResumen="ninguna";
 function serieMensualEntregas(anio){
+  // Solo los canales base: Venta Tradicional, Planes de Ahorro y Venta Corporativa.
+  // Antes contaba todas las entregas, mayoristas incluidas, y la barra decía 58
+  // donde el tablero de ventas dice 45. A la mayorista no se le vende ni contrato
+  // ni accesorios, así que no es comparable y además no es el denominador de la
+  // tasa que va dibujada encima.
   const a=new Array(12).fill(0);
-  ENT.filter(okEnt).forEach(r=>{if(+r.f.slice(0,4)===anio)a[+r.f.slice(5,7)-1]++});
+  ENT.filter(r=>okEnt(r)&&enBase(r)).forEach(r=>{if(+r.f.slice(0,4)===anio)a[+r.f.slice(5,7)-1]++});
   return a;
 }
 // Tasa mensual con el criterio de Jorge: el denominador son solo las entregas de los
@@ -693,12 +699,97 @@ function graficoCombinado(tipo){
     yAxis:ejes, series
   },290);
 }
+
+/* ═══ TECHO DEL DEPÓSITO ═══════════════════════════════════════════════════
+   Las Lomas tiene lugar bajo techo para 90 unidades. Lo que pasa de ahí se
+   guarda al fondo del predio, que es una playa compartida con el resto del
+   grupo y NO está cubierta: ahí una granizada pega de lleno.
+
+   La cuenta: lo que hay hoy bajo techo, más lo que está por entrar —las que
+   todavía no tienen el alta en SIAC y las que están en Salta siendo de Jujuy—
+   menos las que ya se vendieron y están por salir.
+
+   Para cambiar la capacidad, tocá este número y nada más.
+   ──────────────────────────────────────────────────────────────────────── */
+const CUPOS_TECHO = 90;
+
+/* Las Lomas en cualquiera de sus formas: el depósito, el salón y las informadas */
+const enLomas = u => /LOMAS/.test(String(u.destino).toUpperCase());
+/* Depósitos y sucursales propias de Salta: los destinos que SIAC escribe empezando
+   por "Salta ..." y la sucursal. Quedan afuera las reventas y los concesionarios de
+   la zona —Madina Martín en Metán, Autolux Tartagal, Angel Simón—: esas unidades ya
+   salieron para otro y no vuelven, aunque el nombre del pueblo diga Salta. */
+const enSaltaPropio = u => {
+  const d = String(u.destino).toUpperCase().trim();
+  if (d.indexOf("REV") >= 0) return false;
+  return d.indexOf("SALTA") === 0 || d.indexOf("SUC. SALTA") === 0;
+};
+/* Es de Jujuy si la recepcionó Jujuy o si la venta es de Jujuy */
+const esDeJujuy = u => u.suc === "Jujuy" || u.sucVenta === "Jujuy";
+
+function techo(){
+  const vivas = UNI.filter(u => !u.entregada);
+  const ocupan   = vivas.filter(enLomas);
+  const sinAlta  = vivas.filter(u => !u.destino && esDeJujuy(u));
+  const enSalta  = vivas.filter(u => enSaltaPropio(u) && esDeJujuy(u));
+  const porSalir = ocupan.filter(u => u.fact);
+  const entran   = sinAlta.length + enSalta.length;
+  const proy     = ocupan.length + entran - porSalir.length;
+  const bruto    = ocupan.length + entran;
+  return {
+    ocupan, sinAlta, enSalta, porSalir, entran, proy, bruto,
+    libres: CUPOS_TECHO - ocupan.length,
+    sobran: Math.max(proy - CUPOS_TECHO, 0),
+    sobranBruto: Math.max(bruto - CUPOS_TECHO, 0),
+    cupos: CUPOS_TECHO
+  };
+}
+
+function tarjetaTecho(){
+  const T = techo();
+  const rojo = T.sobran > 0, amarillo = !rojo && (T.sobranBruto > 0 || T.libres <= 5);
+  const col = rojo ? "var(--bad)" : amarillo ? "var(--warn)" : "var(--ok)";
+  const titulo = rojo
+    ? `Nos pasamos por ${T.sobran} unidad${T.sobran > 1 ? "es" : ""}`
+    : amarillo ? "Al límite" : "Entra todo bajo techo";
+  const bajada = rojo
+    ? `${T.sobran} unidad${T.sobran > 1 ? "es van" : " va"} a quedar al fondo del predio, sin cubrir.`
+    : amarillo
+      ? `Entra justo. Cualquier despacho que se adelante nos deja unidades afuera.`
+      : `Quedan ${Math.max(T.cupos - T.proy, 0)} lugares libres después de que entre todo lo que viene.`;
+  const barra = Math.min(Math.round(T.proy / T.cupos * 100), 140);
+  return `<div class="card" style="border-left:4px solid ${col};margin-bottom:14px">
+    <h3>Techo del depósito <span>Las Lomas · ${T.cupos} lugares bajo techo</span></h3>
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:2px 0 8px">
+      <b style="font-size:30px;color:${col};letter-spacing:-1px">${T.proy}</b>
+      <span style="color:var(--mute)">proyectadas sobre ${T.cupos}</span>
+      <b style="color:${col};margin-left:auto">${titulo}</b>
+    </div>
+    <div class="prog" style="height:10px"><span style="width:${Math.min(barra,100)}%;background:${col}"></span></div>
+    <p class="sub" style="margin:8px 0 12px">${bajada}</p>
+    <div class="al">
+      <div class="a n"><i></i><div><b>${T.ocupan.length} ocupando lugar hoy</b>
+        <p>Unidades en Las Lomas sin entregar.${T.porSalir.length ? ` De esas, ${T.porSalir.length} ya están facturadas y van a salir.` : ""}</p></div></div>
+      <div class="a ${T.sinAlta.length ? "w" : "n"}"><i></i><div><b>${T.sinAlta.length} por llegar de fábrica</b>
+        <p>Todavía sin alta en SIAC: cuando se les da el alta aparecen en Las Lomas.</p></div></div>
+      <div class="a ${T.enSalta.length ? "w" : "n"}"><i></i><div><b>${T.enSalta.length} para traer de Salta</b>
+        <p>Están en depósitos o sucursales de Salta y son de Jujuy. Hay que pedirle el traslado a logística.</p></div></div>
+    </div>
+    <p class="sub" style="margin-top:10px">${T.ocupan.length} hoy + ${T.entran} por entrar − ${T.porSalir.length} por salir = <b>${T.proy}</b>. Lo que pasa de ${T.cupos} va al fondo del predio, que no está bajo techo.</p>
+  </div>`;
+}
+
 function graficoResumen(S){
-  const campo=grafResumen==='accesorios'?'acc':grafResumen==='contratos'?'cm':null;
-  const total=campo&&S.e.length?Math.round(S.e.filter(r=>r[campo]).length/S.e.length*100):null;
+  // La tasa del período se calcula igual que las tarjetas de arriba: el denominador
+  // son las entregas base. Antes, para contratos, se miraba la columna C.M. de la
+  // hoja ENTR., que desde que Javier carga en su planilla viene vacía: por eso el
+  // encabezado marcaba 0%. Ahora los contratos salen de donde salen de verdad.
+  const B=base(S.e);
+  const total=grafResumen==='accesorios'?tasa(S.e.filter(r=>r.acc).length,B)
+             :grafResumen==='contratos'?tasa(S.cm.length,B):null;
   const botones=`<div class="chart-switch"><button class="${grafResumen==='accesorios'?'on':''}" onclick="cambiarGrafResumen('accesorios')">Tasa accesorios</button><button class="${grafResumen==='contratos'?'on':''}" onclick="cambiarGrafResumen('contratos')">Tasa contratos</button></div>`;
   const detalle=grafResumen==='ninguna'?'Entregas mensuales':grafResumen==='accesorios'?`Entregas + tasa de accesorios · ${total}% en el período`:`Entregas + tasa de contratos · ${total}% en el período · meta 30%`;
-  return `${botones}<div class="chart-headline"><div><h3 style="margin:0">Entregas por mes</h3><p class="sub">${detalle}. Las barras permanecen fijas; los botones superponen la tasa elegida.</p></div><div class="metric">${fmt(S.e.length)}<small>entregas</small></div></div>${graficoCombinado(grafResumen)}<div class="chart-note"><span><b>Barras:</b> entregas ${F.anio}${grafResumen!=='ninguna'?` · <b>Línea:</b> ${grafResumen==='accesorios'?'tasa accesorios':'tasa contratos'}`:''}</span><span>Volvé a presionar el botón activo para ocultar la línea.</span></div>`;
+  return `${botones}<div class="chart-headline"><div><h3 style="margin:0">Entregas por mes</h3><p class="sub">${detalle}. Las barras permanecen fijas; los botones superponen la tasa elegida.</p></div><div class="metric">${fmt(B)}<small>entregas base</small></div></div>${graficoCombinado(grafResumen)}<div class="chart-note"><span><b>Barras:</b> entregas base ${F.anio}${grafResumen!=='ninguna'?` · <b>Línea:</b> ${grafResumen==='accesorios'?'tasa accesorios':'tasa contratos'}`:''}</span><span>Volvé a presionar el botón activo para ocultar la línea.</span></div>`;
 }
 function cambiarGrafResumen(tipo){grafResumen=(grafResumen===tipo?'ninguna':tipo);const el=document.getElementById('grafResumen');if(el){el.innerHTML=graficoResumen(sets());pintarGraficos()}}
 
@@ -752,40 +843,7 @@ MOD.resumen={ic:"🏠",t:"Resumen",d:"Cómo vamos en el período y qué conviene
       <p class="sub" style="margin-top:6px">${mesAntTotal?`Llevamos el ${Math.round(S.e.length/mesAntTotal*100)}% de lo que se entregó en todo ${MESES[F.mes-1].toLowerCase()} del año pasado${pesosAntTotal?`, y el ${Math.round(pesosAc/pesosAntTotal*100)}% de lo que se facturó en accesorios`:""}.`:""} La proyección asume el mismo ritmo diario hasta fin de mes; los contratos y la facturación de accesorios no se reparten parejo, así que tomala como referencia.</p></div>`;
   }
 
-  // Alertas y oportunidades, calculadas con los datos
-  const A=[];
-  const st=STK;
-  const viejas=st.filter(r=>r.patio>90);
-  if(viejas.length)A.push(["b",`${viejas.length} unidades con más de 90 días en patio`,`La más antigua: interno ${[...viejas].sort((a,b)=>b.patio-a.patio)[0].int}, ${[...viejas].sort((a,b)=>b.patio-a.patio)[0].patio} días. Conviene empujarlas con Ventas.`,"stock"]);
-  const sinC=st.filter(r=>!r.ctrl);
-  if(sinC.length)A.push(["b",`${sinC.length} unidades sin plan de control periódico`,`No figuran en C. DE STOCK: falta cargar la fecha ZP.`,"stock"]);
-  const zpMal=st.filter(r=>r.zp&&(r.dzp<0||r.dzp>1500));
-  if(zpMal.length)A.push(["w",`Fecha ZP a revisar`,`Internos ${zpMal.map(r=>r.int).join(", ")}: la fecha de producción no es válida.`,"stock"]);
-  const conNov=st.filter(r=>r.op!=="OK");
-  if(conNov.length)A.push(["w",`${conNov.length} unidades del stock con novedad`,`No están OK para entregar.`,"stock"]);
-  if(BA&&pen<penA)A.push(["w",`La tasa de contratos bajó`,`${pen}% contra ${penA}% del mismo período del año anterior.`,"contratos"]);
-  else if(BA&&pen>penA)A.push(["o",`La tasa de contratos subió`,`${pen}% contra ${penA}% del año anterior.`,"contratos"]);
-  if(B&&pen<30)A.push(["w",`Tasa de contratos por debajo de la meta`,`${pen}% sobre ${B} entregas base. La meta es 30%.`,"contratos"]);
-  if(enCurso&&!S.cm.length&&S.e.length)A.push(["w",`Sin contratos cargados en el mes`,`Hay ${S.e.length} entregas y ningún contrato con fecha de venta este mes. ¿Falta cargar?`,"contratos"]);
-  const pm={};S.e.forEach(r=>{if(r.dias!==null)(pm[r.mod]||(pm[r.mod]=[])).push(r.dias)});
-  const lento=Object.entries(pm).filter(([,a])=>a.length>=3).map(([k,a])=>[k,prom(a)]).sort((a,b)=>b[1]-a[1])[0];
-  if(lento&&lento[1]>60)A.push(["w",`${lento[0]} es el modelo que más tarda en salir`,`${lento[1]} días promedio en stock en el período.`,"rotacion"]);
-  const vend={};S.e.forEach(r=>{const v=vend[r.vend]||(vend[r.vend]={n:0,cm:0});v.n++;v.cm+=r.cm});
-  const sinCm=Object.entries(vend).filter(([k,v])=>k!=="Sin dato"&&v.n>=5&&!v.cm).map(([k])=>k);
-  if(sinCm.length)A.push(["n",`Vendedores con 5 o más entregas y ningún contrato`,sinCm.join(" · "),"vendedores"]);
-  const tib=JAV.filter(x=>x.comprado===0&&/recordatorio|otro momento|no lo necesito|proximo mes|cierre de tarjeta|espera/i.test(x.motivo));
-  if(tib.length)A.push(["n",`${tib.length} clientes para volver a llamar por contrato`,`No dijeron que no: pidieron recordatorio o dijeron "en otro momento".`,"contratos"]);
-  const trab=UNI.filter(x=>!x.cert&&!x.pago&&x.estado!=="Entregada");
-  if(trab.length)A.push(["b",`${trab.length} unidades sin certificado ni pago a fábrica`,`No deben salir del concesionario. ${trab.filter(x=>x.suc==="Jujuy").length} están en Jujuy.`,"unidades"]);
-  const fsent=UNI.filter(x=>x.estado==="Facturada sin entregar");
-  if(fsent.length>15)A.push(["w",`${fsent.length} unidades facturadas sin entregar`,`Ya se vendieron y siguen ocupando patio.`,"unidades"]);
-  const sd=S.e.filter(r=>r.vend==="Sin dato").length;
-  if(sd)A.push(["n",`${sd} entregas sin vendedor cargado`,`Completar el vendedor en ENTR. mejora el análisis por vendedor.`,"entregas"]);
-  const nov=S.rc.filter(r=>r.nov).length, novA=S.rcA.filter(r=>r.nov).length;
-  if(S.rc.length&&S.rcA.length&&nov/S.rc.length>novA/S.rcA.length+.05)A.push(["w",`Más unidades llegan con novedad de fábrica`,`${Math.round(nov/S.rc.length*100)}% contra ${Math.round(novA/S.rcA.length*100)}% del año anterior.`,"recepciones"]);
-  if(!A.length)A.push(["o","Sin alertas para este período","Todo dentro de lo esperado.",""]);
-
-  CSV=()=>[["Resumen",perTxt()],["Entregas",S.e.length],["Recepciones",S.rc.length],["Envíos",S.v.length],["Contratos vendidos",S.cm.length],["Penetración de contratos %",pen],["Accesorios facturados $",Math.round(pesosAc)],["Días promedio en stock",prom(ds)],[],["Alertas"],...A.map(a=>[a[1],a[2]])];
+  CSV=()=>[["Resumen",perTxt()],["Entregas",S.e.length],["Recepciones",S.rc.length],["Envíos",S.v.length],["Contratos vendidos",S.cm.length],["Penetración de contratos %",pen],["Accesorios facturados $",Math.round(pesosAc)],["Días promedio en stock",prom(ds)]];
 
   return `<p class="frase">${frase}</p><p class="sub">${perTxt()} · comparado con el mismo período del año anterior${enCurso?` · datos al ${fdia(ULT)}`:""}</p>
   <p class="sub" style="margin-bottom:-6px">Las tasas se calculan sobre las entregas de Venta Tradicional, Planes de Ahorro y Venta Corporativa (${B} en el período). Mayorista queda fuera de la base, pero lo que se le vendió suma arriba: por eso la tasa puede superar el 100%.</p>
@@ -799,16 +857,14 @@ MOD.resumen={ic:"🏠",t:"Resumen",d:"Cómo vamos en el período y qué conviene
     ${kpi(mill(pesosAc),"Accesorios facturados",delta(pesosAc,pesosAcA,mill))}
     ${kpi(fmt(STK.length),"Stock físico hoy",`<div class="d">${STK.filter(r=>r.op==="OK").length} OK para entregar</div>`)}
   </div>
+  ${tarjetaTecho()}
   <div class="g g3" style="margin-bottom:14px">
     ${tarjetaAro("Contratos",pen,30,`${S.cm.length} vendidos · meta 30%`)}
     ${tarjetaAro("Accesorios en la entrega",tAcc,50,`${S.e.filter(r=>r.acc).length} de ${B} entregas base`)}
     ${tarjetaAro("Facturación de accesorios",DATA.objAcc?Math.round(pesosAc/((DATA.objAcc||0)*(F.modo==="mes"?1:(F.anio===+ULT.slice(0,4)?+ULT.slice(5,7):12)))*100):0,100,`${mill(pesosAc)} de ${mill((DATA.objAcc||0)*(F.modo==="mes"?1:(F.anio===+ULT.slice(0,4)?+ULT.slice(5,7):12)))}`)}
   </div>
-  <div class="g g21">
-    <div>${ritmo}<div class="card exec-chart" ${ritmo?'style="margin-top:14px"':""}><div id="grafResumen">${graficoResumen(S)}</div></div></div>
-    <div class="card"><h3>Alertas y oportunidades <span>tocá para ver el detalle</span></h3>
-      <div class="al">${A.map(a=>`<div class="a ${a[0]}" ${a[3]?`onclick="ir('${a[3]}')"`:""}><i></i><div><b>${esc(a[1])}</b><p>${esc(a[2])}</p></div><span class="go">${a[3]?"Ver →":""}</span></div>`).join("")}</div></div>
-  </div>`;
+  ${ritmo}
+  <div class="card exec-chart" ${ritmo?'style="margin-top:14px"':""}><div id="grafResumen">${graficoResumen(S)}</div></div>`;
 }};
 
 MOD.entregas={ic:"🚗",t:"Entregas",d:"Unidades entregadas por canal, modelo y vendedor",r(S){
@@ -898,13 +954,7 @@ MOD.contratos={ic:"📝",t:"Contratos",d:"Contratos de mantenimiento vendidos y 
     <div class="card"><h3>Penetración por modelo</h3>${barras(Object.fromEntries(Object.entries(pm).filter(([,x])=>x.n>=2).map(([k,x])=>[k,Math.round(x.cm/x.n*100)])),12,x=>x+"%","filtMod")}</div>
     <div class="card"><h3>Contratos por mes <span>por fecha de venta</span></h3>${columnas(CMV.filter(okCmv).map(r=>r.f))}</div>
   </div>
-  ${noQuiso.length?`<div class="g g2">
-    <div class="card"><h3>Por qué no compraron <span>${noQuiso.length} en el período</span></h3>${barras(contar(noQuiso,x=>tit(x.motivo||"Sin motivo")),8)}</div>
-    <div class="card"><h3>Facturación de contratos por mes <span>${F.anio}</span></h3>${(()=>{
-      const a=new Array(12).fill(null);
-      JAV.filter(x=>x.comprado===1&&x.fac&&+x.fac.slice(0,4)===F.anio).forEach(x=>{const m=+x.fac.slice(5,7)-1;a[m]=(a[m]||0)+x.precio});
-      return area(a,mill)})()}</div>
-  </div>`:""}
+  ${noQuiso.length?`<div class="card" style="margin-bottom:14px"><h3>Por qué no compraron <span>${noQuiso.length} en el período</span></h3>${barras(contar(noQuiso,x=>tit(x.motivo||"Sin motivo")),8)}</div>`:""}
   ${tibios.length?`<div class="card" style="border-left:4px solid var(--warn)">
     <h3>⏳ Para volver a llamar <span>${tibios.length} clientes</span></h3>
     <p class="sub" style="margin-bottom:10px">No dijeron que no: pidieron recordatorio, dinero o "en otro momento". Son la venta más fácil que hay.</p>
