@@ -411,7 +411,7 @@ const dDesde=d=>d?Math.floor((HOY-new Date(d+"T00:00:00"))/864e5):null;
 const dEnt=r=>r[6]?Math.round((new Date(r[0])-new Date(r[6]))/864e5):null;
 
 // Normalización de filas (nombres legibles para el código)
-let TODAS,ENT,SALON,REC,VIA,ACC,ACP,CMV,STK,VIAJE,UNI,JAV,ULT;
+let TODAS,ENT,SALON,REC,VIA,ACC,ACP,CMV,STK,VIAJE,UNI,JAV,SEG,ULT;
 // Salón Lomas no es una entrega: la unidad pasa al salón como exhibición y esa fila se
 // borra cuando se vende de verdad. Se cuenta aparte, como preparación.
 const esSalon=r=>r.canal==="Salon Lomas";
@@ -424,15 +424,24 @@ const tasa=(num,den)=>den?Math.round(num/den*100):0;
 function prepararDatos(){
   TODAS=DATA.ent.map(r=>({f:r[0],canal:tit(r[1]),mod:r[2],vend:r[3],cm:r[4],acc:r[5],rec:r[6],modelo:r[7]||r[2],int:r[8]||"",dias:dEnt(r)}));
   ENT=TODAS.filter(r=>!esSalon(r)); SALON=TODAS.filter(esSalon);
-  REC=DATA.rec.map(r=>({f:r[0],mod:r[1],nov:r[2],clas:r[3],equipo:r[4],salida:r[5],origen:r[6]||"Sin dato",quien:r[7]||""}));
+  REC=DATA.rec.map(r=>({f:r[0],mod:r[1],nov:r[2],clas:r[3],equipo:r[4],salida:r[5],origen:r[6]||"Sin dato",quien:r[7]||"",
+    /* Lo que hace el sector: cuándo quedó lista la unidad, quién la armó, cuándo se
+       entregó, a qué canal fue y dónde está su check list. */
+    fArm:r[8]||null, armadoPor:r[9]||"", fEnt:r[10]||null, tipo:r[11]||"",
+    chk:r[12]||"legajo", archivo:r[13]||0, int:String(r[14]||"").trim(), fSal:r[15]||null}));
   VIA=DATA.via.map(r=>({f:r[0],grp:r[1],dest:tit(r[2]),mod:r[3]}));
-  ACC=DATA.acc.map(r=>({f:r[0],items:r[1].map(tit),est:r[2]}));
+  ACC=DATA.acc.map(r=>({f:r[0],items:r[1].map(tit),est:r[2],
+    tec:r[3]||"", fTurno:r[4]||null, int:String(r[5]||"").trim()}));
   ACP=DATA.accPesos.map(r=>({f:r[0],t:r[1]}));
   CMV=DATA.cmv.map(r=>({f:r[0],mom:r[1],mod:r[2],vend:r[3]}));
   UNI=(DATA.unidades||[]).map(r=>({int:r[0],modelo:r[1],mod:r[2],color:r[3],destino:r[4]||"",suc:r[5],cert:r[6],pago:r[7],fact:r[8],vend:r[9],entregada:r[10],
-    sucVenta:r[11]||"",
+    sucVenta:r[11]||"", pat:r[12]||null,
     estado:!r[4]?"En viaje":(r[10]?"Entregada":(r[8]?"Facturada sin entregar":"Disponible"))}));
   JAV=(DATA.javier||[]).map(r=>({ent:r[0],fac:r[1],comprado:r[2],precio:r[3],motivo:(r[4]||"").trim(),mom:r[5],vin:r[6],mod:r[7]||"Sin dato"}));
+  /* Recupero del seguro. f = fecha de facturación al seguro, que es el mes en que
+     el recupero cuenta (igual que la tabla dinámica de la hoja G. D. del libro). */
+  SEG=(DATA.seguro||[]).map(r=>({f:r[0],gan:r[1],reclamado:r[2],aprobado:r[3],mod:r[4],
+    dano:r[5],estado:r[6],prov:r[7],fReclamo:r[8]}));
   VIAJE=(DATA.enViaje||[]).map(r=>({f:r[0],mod:r[1],equipo:r[2],modelo:r[3]||r[1],int:r[4]||"",estado:r[5]||""}));
   STK=DATA.stock.map(r=>({int:r[0],mod:r[1],modelo:r[2],rec:r[3],op:r[4],ctrl:r[5],zp:r[6],
     vin:r[7]||"",box:r[8]||"",llave:r[9]||"",manual:r[10]||"",ubic:r[11]||"",or:r[12]||"",
@@ -709,9 +718,15 @@ function graficoCombinado(tipo){
    todavía no tienen el alta en SIAC y las que están en Salta siendo de Jujuy—
    menos las que ya se vendieron y están por salir.
 
-   Para cambiar la capacidad, tocá este número y nada más.
+   La capacidad la contó Pablo a mano: el predio tiene 104 lugares bajo techo,
+   de los que 4 están prestados para que los muchachos guarden las motos cuando
+   vienen a trabajar. Quedan 100 de uso real. Esos 4 se pueden recuperar si hace
+   falta por granizo, así que son un colchón, no una pérdida.
+
+   Para cambiar la capacidad, tocá estos dos números y nada más.
    ──────────────────────────────────────────────────────────────────────── */
-const CUPOS_TECHO = 90;
+const CUPOS_TECHO = 100;      // lugares de uso real
+const CUPOS_MOTOS = 4;        // prestados, recuperables en una emergencia
 
 /* Las Lomas en cualquiera de sus formas: el depósito, el salón y las informadas */
 const enLomas = u => /LOMAS/.test(String(u.destino).toUpperCase());
@@ -731,13 +746,27 @@ function techo(){
   const vivas = UNI.filter(u => !u.entregada);
   const ocupan   = vivas.filter(enLomas);
   const sinAlta  = vivas.filter(u => !u.destino && esDeJujuy(u));
-  const enSalta  = vivas.filter(u => enSaltaPropio(u) && esDeJujuy(u));
-  const porSalir = ocupan.filter(u => u.fact);
+
+  /* De las que están en Salta, las que se traen YA son las facturadas con venta de
+     Jujuy: esas Pablo se las pide a logística. Las que son de Jujuy pero todavía no
+     se vendieron van a venir en algún momento, pero no tienen fecha: se muestran
+     aparte y no entran en la proyección, para no inflarla. */
+  const deJujuyEnSalta = vivas.filter(u => enSaltaPropio(u) && esDeJujuy(u));
+  const enSalta  = deJujuyEnSalta.filter(u => u.fact);
+  const salaLuego = deJujuyEnSalta.filter(u => !u.fact);
+
+  /* De las que ocupan lugar hoy, las que salen pronto son las que ya están
+     facturadas Y patentadas: con el dominio sacado se entregan dentro de la semana,
+     diez días como mucho. Las facturadas sin patentar también van a salir, pero sin
+     fecha, así que no se descuentan. */
+  const porSalir = ocupan.filter(u => u.fact && u.pat);
+  const salenLuego = ocupan.filter(u => u.fact && !u.pat);
+
   const entran   = sinAlta.length + enSalta.length;
   const proy     = ocupan.length + entran - porSalir.length;
   const bruto    = ocupan.length + entran;
   return {
-    ocupan, sinAlta, enSalta, porSalir, entran, proy, bruto,
+    ocupan, sinAlta, enSalta, porSalir, entran, proy, bruto, salaLuego, salenLuego,
     libres: CUPOS_TECHO - ocupan.length,
     sobran: Math.max(proy - CUPOS_TECHO, 0),
     sobranBruto: Math.max(bruto - CUPOS_TECHO, 0),
@@ -769,13 +798,13 @@ function tarjetaTecho(){
     <p class="sub" style="margin:8px 0 12px">${bajada}</p>
     <div class="al">
       <div class="a n"><i></i><div><b>${T.ocupan.length} ocupando lugar hoy</b>
-        <p>Unidades en Las Lomas sin entregar.${T.porSalir.length ? ` De esas, ${T.porSalir.length} ya están facturadas y van a salir.` : ""}</p></div></div>
+        <p>Unidades en Las Lomas sin entregar.${T.porSalir.length ? ` De esas, ${T.porSalir.length} ya están facturadas y patentadas: con el dominio sacado se entregan dentro de los diez días.` : ""}${T.salenLuego.length ? ` Otras ${T.salenLuego.length} están vendidas pero sin patentar, así que no se descuentan todavía.` : ""}</p></div></div>
       <div class="a ${T.sinAlta.length ? "w" : "n"}"><i></i><div><b>${T.sinAlta.length} por llegar de fábrica</b>
         <p>Todavía sin alta en SIAC: cuando se les da el alta aparecen en Las Lomas.</p></div></div>
       <div class="a ${T.enSalta.length ? "w" : "n"}"><i></i><div><b>${T.enSalta.length} para traer de Salta</b>
-        <p>Están en depósitos o sucursales de Salta y son de Jujuy. Hay que pedirle el traslado a logística.</p></div></div>
+        <p>Facturadas, con venta de Jujuy, paradas en depósitos o sucursales de Salta. Hay que pedirle el traslado a logística.${T.salaLuego.length ? ` Hay ${T.salaLuego.length} más de Jujuy allá sin vender, que no entran en la cuenta porque no tienen fecha.` : ""}</p></div></div>
     </div>
-    <p class="sub" style="margin-top:10px">${T.ocupan.length} hoy + ${T.entran} por entrar − ${T.porSalir.length} por salir = <b>${T.proy}</b>. Lo que pasa de ${T.cupos} va al fondo del predio, que no está bajo techo.</p>
+    <p class="sub" style="margin-top:10px">${T.ocupan.length} hoy + ${T.entran} por entrar − ${T.porSalir.length} por salir = <b>${T.proy}</b>. Lo que pasa de ${T.cupos} va al fondo del predio, que no está bajo techo.${CUPOS_MOTOS?` Quedan ${CUPOS_MOTOS} lugares más prestados para las motos del personal: se pueden pedir si se viene una granizada.`:""}</p>
   </div>`;
 }
 
@@ -1114,7 +1143,612 @@ MOD.vendedores={ic:"👥",t:"Vendedores",d:"Cantidad y calidad de la entrega por
 /* ═══ NAVEGACIÓN Y FILTROS ═══ */
 let actual="resumen";
 // Orden del menú: primero lo del día a día, al final lo de análisis.
-const ORDEN=["resumen","entregas","envios","contratos","accesorios","recepciones","stock","unidades","vendedores","rotacion"];
+
+
+/* ═══ INFORME DE GESTIÓN ════════════════════════════════════════════════════
+   El informe mensual que va a Jorge. Mantiene el diseño del que venías
+   armando a mano —encabezado VW, solapas, tarjetas, los mismos gráficos—
+   pero los números salen del tablero, no se tipean.
+
+   Lo único que se escribe a mano es el bloque de Gestión / RRHH, que son
+   hechos del mes que ningún sistema sabe. Esos textos quedan guardados en
+   este navegador, así el mes que viene arrancás del anterior y solo corregís.
+
+   El archivo que baja es un HTML suelto: se abre en cualquier computadora,
+   sin internet, y se adjunta al correo.
+   ──────────────────────────────────────────────────────────────────────── */
+
+const RRHH_CLAVE = "informeGestionTextos";
+const RRHH_CAMPOS = [
+  ["tablero",  "Nuevo tablero de desempeño"],
+  ["reunion",  "Reunión PDI"],
+  ["pcgc",     "PCGC"],
+  ["segui",    "Seguimiento operativo"],
+  ["rrhh",     "RRHH"]
+];
+function textosRRHH(){
+  try { return JSON.parse(localStorage.getItem(RRHH_CLAVE) || "{}") } catch(e){ return {} }
+}
+function guardarRRHH(){
+  const o = {};
+  RRHH_CAMPOS.forEach(([k]) => { const el = document.getElementById("rh_" + k); if (el) o[k] = el.value.trim() });
+  try { localStorage.setItem(RRHH_CLAVE, JSON.stringify(o)) } catch(e){}
+  const av = document.getElementById("rhAviso");
+  if (av) { av.textContent = "Guardado"; setTimeout(() => av.textContent = "", 2200) }
+}
+
+/* Los números del informe, para el mes y el año que se estén mirando */
+function datosInforme(m, a){
+  const esMes = d => !!d && +String(d).slice(0,4) === a && +String(d).slice(5,7) === m;
+  const hastaMes = d => !!d && +String(d).slice(0,4) === a && +String(d).slice(5,7) <= m;
+  const serie = (arr, fecha, valor) => {
+    const s = new Array(m).fill(0);
+    arr.forEach(x => { const f = fecha(x); if (hastaMes(f)) s[+f.slice(5,7)-1] += (valor ? valor(x) : 1) });
+    return s;
+  };
+  const meses = MESES.slice(0, m).map(x => x.slice(0,3).toLowerCase());
+
+  /* Entregas */
+  const ent    = ENT.filter(r => esMes(r.f));
+  const com    = ent.filter(enBase);                      // comerciales: la base
+  const mayo   = ent.filter(r => !enBase(r));
+  const canal  = contar(ent, r => r.canal);
+  const modelo = contar(com, r => r.mod);
+
+  /* Contratos */
+  const cm      = CMV.filter(r => esMes(r.f));
+  const enEnt   = cm.filter(r => r.mom === "En la entrega").length;
+  const tasaCm  = tasa(cm.length, com.length);
+  const cmModel = contar(cm, r => r.mod || "Sin dato");
+
+  /* Accesorios */
+  const acp     = ACP.filter(r => esMes(r.f));
+  const pesosAc = acp.reduce((s,r) => s + r.t, 0);
+  const conAcc  = com.filter(r => r.acc).length;
+  const tasaAc  = tasa(conAcc, com.length);
+  const obj     = DATA.objAcc || 0;
+
+  /* Stock físico de hoy */
+  const ok   = STK.filter(r => r.op === "OK").length;
+  const mal  = STK.length - ok;
+  const ctrl = tasa(STK.filter(r => r.ctrl).length, STK.length);
+
+  /* Recepción */
+  const rec = REC.filter(r => esMes(r.f));
+
+  /* Rotación: días desde que la unidad se recibe hasta que se entrega.
+     OJO con la lectura: esto NO mide la velocidad del sector, mide cuánto tarda
+     la unidad en salir, que depende tanto de la preparación como de la venta.
+     Para medir el tiempo propio de PDI haría falta una fecha de "PDI terminado"
+     que hoy no existe en la planilla. */
+  const dias = com.map(r => r.dias).filter(x => x !== null && x >= 0);
+
+  /* El mismo mes del año anterior, que es como lo lee dirección */
+  const esMesA = d => !!d && +String(d).slice(0,4) === a-1 && +String(d).slice(5,7) === m;
+  const comA = ENT.filter(r => esMesA(r.f) && enBase(r));
+  const cmA  = CMV.filter(r => esMesA(r.f));
+  const acpA = ACP.filter(r => esMesA(r.f));
+  const recA = REC.filter(r => esMesA(r.f));
+  const diasA = comA.map(r => r.dias).filter(x => x !== null && x >= 0);
+  const ant = {
+    hay:    comA.length > 0,
+    ent:    comA.length,
+    cm:     cmA.length,
+    tasaCm: tasa(cmA.length, comA.length),
+    pesos:  acpA.reduce((s,r) => s + r.t, 0),
+    conAcc: comA.filter(r => r.acc).length,
+    tasaAc: tasa(comA.filter(r => r.acc).length, comA.length),
+    rec:    recA.length,
+    dias:   prom(diasA)
+  };
+
+  /* Recupero del seguro */
+  const seg    = SEG.filter(r => esMes(r.f));
+  const segMes = seg.reduce((s,r) => s + r.gan, 0);
+  const segAnio = SEG.filter(r => hastaMes(r.f)).reduce((s,r) => s + r.gan, 0);
+  const segSerie = serie(SEG, r => r.f, r => r.gan);
+  const mejorSeg = segSerie.reduce((mx,v,i) => v > segSerie[mx] ? i : mx, 0);
+
+  return {
+    m, a, meses, nom: MESES[m-1],
+    ent, com, mayo, canal, modelo, dias, ant,
+    cm, enEnt, tasaCm, cmModel,
+    acp, pesosAc, conAcc, tasaAc, obj,
+    stock: STK.length, ok, mal, ctrl,
+    rec, techo: techo(),
+    seg, segMes, segAnio, segSerie, mejorSeg,
+    sEnt:   serie(ENT.filter(enBase), r => r.f),
+    sCm:    serie(CMV, r => r.f),
+    sAcc:   serie(ACP, r => r.f, r => r.t),
+    sConAcc:serie(ENT.filter(r => enBase(r) && r.acc), r => r.f),
+    sRec:   serie(REC, r => r.f),
+    sDias:  (() => {
+      const s = new Array(m).fill(0);
+      for (let i = 1; i <= m; i++) {
+        const d = ENT.filter(r => enBase(r) && +String(r.f).slice(0,4) === a &&
+                  +String(r.f).slice(5,7) === i).map(r => r.dias).filter(x => x !== null && x >= 0);
+        s[i-1] = prom(d);
+      }
+      return s;
+    })()
+  };
+}
+
+/* El archivo que se baja */
+function informeHTML(m, a){
+  const D = datosInforme(m, a);
+  const T = textosRRHH();
+  const per = `${MESES[m-1]} ${a}`;
+  /* En castellano el decimal va con coma: 100,6% y no 100.6% */
+  const pctN = (x,y) => y ? Math.round(x/y*1000)/10 : 0;
+  const pct = (x,y) => String(pctN(x,y)).replace(".", ",");
+  const mon = n => "$" + Math.round(n).toLocaleString("es-AR");
+  const mil = n => "$" + (n/1e6).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}) + "M";
+  const top = (o,n) => orden(o,n);
+  /* En el gráfico la tasa va redondeada: con un decimal se amontona y no aporta */
+  const tasaMes = D.sEnt.map((e,i) => e ? Math.round(D.sCm[i]/e*100) : 0);
+  const tasaAccMes = D.sEnt.map((e,i) => e ? Math.round(D.sConAcc[i]/e*100) : 0);
+  const pie = `Informe de Gestión – Preentregas | ${per} | Pablo Colque`;
+  /* Variación contra el mismo mes del año pasado. Sin dato del año anterior no
+     se inventa nada: la etiqueta simplemente no aparece. */
+  const vs = (hoy, antes, enPuntos) => {
+    if (!D.ant.hay || antes === null || antes === undefined) return "";
+    const d = enPuntos ? Math.round(hoy - antes) : (antes ? Math.round((hoy-antes)/Math.abs(antes)*100) : null);
+    if (d === null) return "";
+    const col = d > 0 ? "#1F7A4D" : d < 0 ? "#D92D20" : "#667085";
+    const txt = d === 0 ? "igual" : (d > 0 ? "▲ +" : "▼ ") + Math.abs(d) + (enPuntos ? " pts" : "%");
+    return `<span style="color:${col};font-weight:800"> · ${txt} vs ${a-1}</span>`;
+  };
+  const kpi = (lab,val,nota,tip) => `<div class="card kpi${tip?" tooltip":""}"${tip?` data-tip="${esc(tip)}"`:""}><div class="label">${lab}</div><div class="value">${val}</div><div class="note">${nota||""}</div></div>`;
+  const donut = (valor, texto, color, tip) => {
+    const dash = Math.round(Math.min(valor,100)/100*289);
+    return `<div class="donut tooltip" data-tip="${esc(tip)}"><svg><circle cx="60" cy="60" r="46" stroke="#E5ECF5" stroke-width="16" fill="none"/><circle cx="60" cy="60" r="46" stroke="${color}" stroke-width="16" fill="none" stroke-dasharray="${dash} 289"/></svg><div class="center"><b>${valor}%</b><span>${texto}</span></div></div>`;
+  };
+  const texto = (k, porDefecto) => esc(T[k] || porDefecto);
+
+  const JS = [
+    "function showView(id,btn){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active')}",
+    "function money(n){return '$'+Math.round(n).toLocaleString('es-AR')}",
+    "function barList(el,labels,values,color,currency){color=color||'#2F78B7';var r=document.getElementById(el);if(!r)return;var max=Math.max.apply(null,values.concat([1]));r.innerHTML=labels.map(function(l,i){return '<div class=\"barrow tooltip\" data-tip=\"'+l+': '+(currency?money(values[i]):values[i])+'\"><div class=\"barlbl\">'+l+'</div><div class=\"bartrack\"><div class=\"barfill\" style=\"width:'+Math.max(7,values[i]/max*100)+'%;background:'+color+'\">'+(currency?money(values[i]):values[i])+'</div></div></div>'}).join('')}",
+    "function signedBarList(el,labels,values,color,money2){color=color||'#8DBB52';var root=document.getElementById(el);if(!root)return;var max=Math.max.apply(null,values.map(function(v){return Math.abs(v)}).concat([1]));root.innerHTML=labels.map(function(lab,i){var v=values[i],w=Math.max(3,Math.abs(v)/max*100);var txt=money2?((v<0?'-$':'$')+Math.abs(Math.round(v)).toLocaleString('es-AR')):v;return '<div class=\"hrow\"><div class=\"hlab\">'+lab+'</div><div class=\"htrack\"><div class=\"hfill\" style=\"width:'+w+'%;background:'+(v<0?'#D92D20':color)+'\"></div></div><div class=\"hval\" style=\"color:'+(v<0?'#D92D20':'#1F2937')+'\">'+txt+'</div></div>'}).join('')}",
+    "function comboChart(el,labels,bars1,bars2,line,names){names=names||['Entregas','V. C.M.','Tasa %'];var r=document.getElementById(el);if(!r)return;var w=820,h=315,p=45,maxBar=Math.max.apply(null,bars1.concat(bars2||[0]).concat([1]))*1.2,maxLine=Math.max(100,Math.max.apply(null,(line||[0])));var step=(w-p*2)/Math.max(labels.length-1,1);var xs=labels.map(function(_,i){return p+i*step});var svg='<svg viewBox=\"0 0 '+w+' '+h+'\"><line class=\"axis\" x1=\"'+p+'\" y1=\"'+(h-p)+'\" x2=\"'+(w-p)+'\" y2=\"'+(h-p)+'\"/>';labels.forEach(function(lab,i){var x=xs[i],bw=Math.min(26,step*0.35);var bh1=(bars1[i]/maxBar)*(h-p*2),y1=h-p-bh1;svg+='<rect class=\"bar\" x=\"'+(x-bw-3)+'\" y=\"'+y1+'\" width=\"'+bw+'\" height=\"'+bh1+'\" rx=\"4\"><title>'+names[0]+' '+lab+': '+bars1[i]+'</title></rect><text class=\"txt\" x=\"'+(x-bw/2-3)+'\" y=\"'+(y1-7)+'\" text-anchor=\"middle\">'+bars1[i]+'</text>';if(bars2){var bh2=(bars2[i]/maxBar)*(h-p*2),y2=h-p-bh2;svg+='<rect class=\"bar2\" x=\"'+(x+3)+'\" y=\"'+y2+'\" width=\"'+bw+'\" height=\"'+bh2+'\" rx=\"4\"><title>'+names[1]+' '+lab+': '+bars2[i]+'</title></rect><text class=\"txt\" x=\"'+(x+bw/2+3)+'\" y=\"'+(y2-7)+'\" text-anchor=\"middle\">'+bars2[i]+'</text>'}svg+='<text class=\"txt\" x=\"'+x+'\" y=\"'+(h-14)+'\" text-anchor=\"middle\">'+lab+'</text>'});if(line){var pts=line.map(function(v,i){return [xs[i],h-p-(v/maxLine)*(h-p*2)]});svg+='<polyline class=\"line\" points=\"'+pts.map(function(x){return x.join(',')}).join(' ')+'\"/>';pts.forEach(function(pt,i){svg+='<circle class=\"pt\" cx=\"'+pt[0]+'\" cy=\"'+pt[1]+'\" r=\"4\"><title>'+names[2]+' '+labels[i]+': '+line[i]+'%</title></circle><text class=\"txt\" x=\"'+(pt[0]+8)+'\" y=\"'+(pt[1]-8)+'\">'+line[i]+'%</text>'})}svg+='</svg>';r.innerHTML=svg}",
+    "function lineChart(el,labels,values,color){color=color||'#2F78B7';var r=document.getElementById(el);if(!r)return;var w=820,h=315,p=45;var max=Math.max.apply(null,values)*1.18||1,min=Math.min.apply(null,values)*0.82;if(max===min){max=min+1}var xs=labels.map(function(_,i){return p+i*(w-p*2)/Math.max(labels.length-1,1)});var pts=values.map(function(v,i){return [xs[i],h-p-((v-min)/(max-min))*(h-p*2)]});var svg='<svg viewBox=\"0 0 '+w+' '+h+'\"><line class=\"axis\" x1=\"'+p+'\" y1=\"'+(h-p)+'\" x2=\"'+(w-p)+'\" y2=\"'+(h-p)+'\"/><polyline points=\"'+pts.map(function(x){return x.join(',')}).join(' ')+'\" fill=\"none\" stroke=\"'+color+'\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>';pts.forEach(function(pt,i){svg+='<circle cx=\"'+pt[0]+'\" cy=\"'+pt[1]+'\" r=\"4\" fill=\"'+color+'\"><title>'+labels[i]+': '+values[i]+'</title></circle><text class=\"txt\" x=\"'+(pt[0]+5)+'\" y=\"'+(pt[1]-8)+'\">'+values[i]+'</text><text class=\"txt\" x=\"'+pt[0]+'\" y=\"'+(h-14)+'\" text-anchor=\"middle\">'+labels[i]+'</text>'});svg+='</svg>';r.innerHTML=svg}",
+    "function donutSplit(el,labels,values,colors){colors=colors||['#2F78B7','#6EA6D8'];var r=document.getElementById(el);if(!r)return;var total=values[0]+values[1]||1;var p1=values[0]/total*515,p2=515-p1;r.innerHTML='<svg viewBox=\"0 0 500 315\"><circle cx=\"250\" cy=\"155\" r=\"82\" stroke=\"#E5ECF5\" stroke-width=\"30\" fill=\"none\"/><circle cx=\"250\" cy=\"155\" r=\"82\" stroke=\"'+colors[0]+'\" stroke-width=\"30\" fill=\"none\" stroke-dasharray=\"'+p1+' 515\" transform=\"rotate(-90 250 155)\"/><circle cx=\"250\" cy=\"155\" r=\"82\" stroke=\"'+colors[1]+'\" stroke-width=\"30\" fill=\"none\" stroke-dasharray=\"'+p2+' 515\" stroke-dashoffset=\"-'+p1+'\" transform=\"rotate(-90 250 155)\"/><text x=\"250\" y=\"150\" text-anchor=\"middle\" font-size=\"30\" font-weight=\"900\" fill=\"#001E50\">'+values[0]+'/'+values[1]+'</text><text x=\"250\" y=\"180\" text-anchor=\"middle\" font-size=\"13\" font-weight=\"800\" fill=\"#667085\">'+labels[0]+' / '+labels[1]+'</text></svg>'}",
+    `comboChart('resCM',${JSON.stringify(D.meses)},${JSON.stringify(D.sEnt)},${JSON.stringify(D.sCm)},${JSON.stringify(tasaMes)},['Entregas','V. C.M.','Tasa']);`,
+    `comboChart('contratosEvol',${JSON.stringify(D.meses)},${JSON.stringify(D.sEnt)},${JSON.stringify(D.sCm)},${JSON.stringify(tasaMes)},['Entregas','V. C.M.','Tasa']);`,
+    `donutSplit('momentoCM',['EN ENTREGA','POST ENTREGA'],[${D.enEnt},${D.cm.length - D.enEnt}]);`,
+    `barList('tiposEntrega',${JSON.stringify(top(D.canal,6).map(x => x[0].toUpperCase()))},${JSON.stringify(top(D.canal,6).map(x => x[1]))},'#2F78B7');`,
+    `barList('modelosEntrega',${JSON.stringify(top(D.modelo,9).map(x => x[0].toUpperCase()))},${JSON.stringify(top(D.modelo,9).map(x => x[1]))},'#2F78B7');`,
+    `barList('motivosCM',${JSON.stringify(top(D.cmModel,8).map(x => x[0].toUpperCase()))},${JSON.stringify(top(D.cmModel,8).map(x => x[1]))},'#2F78B7');`,
+    `comboChart('accUnidades',${JSON.stringify(D.meses)},${JSON.stringify(D.sEnt)},${JSON.stringify(D.sConAcc)},${JSON.stringify(tasaAccMes)},['Entregas','V. Acc.','Tasa']);`,
+    `barList('accFacturacion',${JSON.stringify(D.meses)},${JSON.stringify(D.sAcc)},'#2F78B7',true);`,
+    `barList('stockModelo',${JSON.stringify(top(contar(STK, r => r.mod), 10).map(x => x[0].toUpperCase()))},${JSON.stringify(top(contar(STK, r => r.mod), 10).map(x => x[1]))},'#2F78B7');`,
+    `lineChart('recep2026',${JSON.stringify(D.meses)},${JSON.stringify(D.sRec)});`,
+    D.dias.length ? `lineChart('rotacion',${JSON.stringify(D.meses)},${JSON.stringify(D.sDias)},'#6EA6D8');` : "",
+    `barList('recepHist',${JSON.stringify(top(contar(D.rec, r => r.mod), 9).map(x => x[0].toUpperCase()))},${JSON.stringify(top(contar(D.rec, r => r.mod), 9).map(x => x[1]))},'#8DBB52');`,
+    D.seg.length || D.segAnio ?
+      `signedBarList('recuperoSeguros',${JSON.stringify(D.meses.slice().reverse().map(x => x.toUpperCase() + " " + String(a).slice(2)))},${JSON.stringify(D.segSerie.slice().reverse())},'#8DBB52',true);` : ""
+  ].join("\n");
+
+  return `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe de Gestión – Preentregas | ${per}</title>
+<style>
+:root{--vw:#001E50;--vw2:#00437A;--vw3:#0B5CAB;--sky:#00B0F0;--bg:#F3F6FA;--card:#FFFFFF;
+--text:#1F2937;--muted:#667085;--line:#D8E2EE;--blue:#2F78B7;--blue2:#6EA6D8;--ice:#EAF3FF;--ok:#1F7A4D;--bad:#D92D20}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--text)}
+header{background:linear-gradient(135deg,var(--vw),var(--vw2));color:white;padding:22px 30px;border-bottom:5px solid var(--sky)}
+.header-wrap{max-width:1450px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:20px}
+.brand{font-size:12px;letter-spacing:.18em;text-transform:uppercase;opacity:.86}
+h1{font-size:31px;margin:8px 0 5px}.subtitle{margin:0;color:#dcecff}
+.periodo{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);padding:14px 18px;border-radius:16px;text-align:right}
+.periodo span{font-size:12px;opacity:.8}.periodo strong{display:block;font-size:26px}
+nav{position:sticky;top:0;background:#fff;z-index:20;border-bottom:1px solid var(--line);box-shadow:0 6px 18px rgba(0,30,80,.07)}
+.nav-wrap{max-width:1450px;margin:auto;padding:10px 14px;display:flex;gap:8px;overflow:auto}
+button.tab{border:0;border-radius:999px;background:#E8EEF7;color:var(--vw);padding:10px 15px;font-weight:800;cursor:pointer;white-space:nowrap;transition:.18s}
+button.tab:hover{background:#DCEBFA;transform:translateY(-1px)}
+button.tab.active{background:var(--vw);color:white;box-shadow:0 6px 16px rgba(0,30,80,.22)}
+main{max-width:1450px;margin:18px auto;padding:0 14px}.view{display:none}.view.active{display:block}
+.grid{display:grid;gap:16px}.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:repeat(3,1fr)}.kpis{grid-template-columns:repeat(5,1fr)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:0 10px 25px rgba(0,30,80,.08)}
+h2{margin:0 0 14px;color:var(--vw);font-size:21px}h3{margin:0 0 10px;color:var(--vw)}
+.kpi .label{font-size:12px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.kpi .value{font-size:30px;font-weight:900;color:var(--vw);margin:8px 0 4px}.kpi .note{font-size:12px;color:var(--muted)}
+.insight{font-size:15px;line-height:1.55;color:#344054}.caption{font-size:12px;color:var(--muted);font-style:italic;margin-top:8px}
+.section-footer{color:var(--muted);font-size:12px;text-align:center;margin:18px 0 4px;padding-top:10px;border-top:1px solid var(--line)}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid var(--line);font-size:14px;text-align:left}
+th{background:#EEF4FB;color:var(--vw);font-size:12px;text-transform:uppercase}
+.tooltip{position:relative;cursor:help}.tooltip:hover:after{content:attr(data-tip);position:absolute;left:0;bottom:105%;background:var(--vw);color:#fff;padding:9px 12px;border-radius:10px;white-space:pre-line;font-size:12px;z-index:99;min-width:220px;box-shadow:0 10px 24px rgba(0,0,0,.18)}
+.chart svg{width:100%;height:315px}.axis{stroke:#D7DEE8;stroke-width:1}.bar{fill:var(--blue)}.bar2{fill:#6EA6D8}
+.line{fill:none;stroke:var(--vw3);stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+.pt{fill:var(--vw)}.txt{fill:#344054;font-size:12px;font-weight:700}
+.barrow{display:flex;align-items:center;margin:11px 0;gap:10px}.barlbl{width:250px;text-align:right;font-weight:700;color:#555}
+.bartrack{flex:1;background:#edf2f7;border-radius:12px;height:27px;overflow:hidden}
+.barfill{height:100%;background:var(--blue);border-radius:12px;text-align:right;color:white;font-weight:800;line-height:27px;padding-right:8px;min-width:22px}
+.hrow{display:flex;align-items:center;gap:10px;margin:9px 0}.hlab{width:92px;font-weight:800;color:#555;font-size:13px}
+.htrack{flex:1;background:#edf2f7;border-radius:10px;height:20px;overflow:hidden}.hfill{height:100%;border-radius:10px}
+.hval{width:130px;text-align:right;font-weight:800;font-size:13px}
+.donut-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.donut{position:relative;display:flex;align-items:center;justify-content:center;min-height:150px;background:#F8FBFF;border:1px solid var(--line);border-radius:18px}
+.donut svg{width:120px;height:120px;transform:rotate(-90deg)}.donut .center{position:absolute;text-align:center}
+.donut .center b{font-size:26px;color:var(--vw)}.donut .center span{display:block;font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase}
+.semaforo{display:grid;gap:10px}
+.sem{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:#F8FBFF}
+.sem i{width:12px;height:12px;border-radius:50%;flex:none}
+.sem b{font-size:19px;min-width:92px;color:var(--vw)}
+.sem .d{font-size:13px;color:var(--muted)}
+.sem .n{font-weight:800;color:#344054;font-size:14px}
+@media(max-width:1100px){.kpis,.three,.two{grid-template-columns:1fr 1fr}.header-wrap{flex-direction:column;align-items:flex-start}.periodo{text-align:left}.donut-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.kpis,.three,.two{grid-template-columns:1fr}.barlbl{width:135px;font-size:12px}}
+@media print{body{background:#fff}nav{display:none}.view{display:block!important;page-break-before:always}.card{box-shadow:none}}
+</style></head><body>
+<header><div class="header-wrap">
+  <div>
+    <div class="brand">Volkswagen · Autosol Jujuy · Preentregas</div>
+    <h1>Informe de Gestión – Preentregas</h1>
+    <p class="subtitle">Resumen ejecutivo, entregas, contratos, accesorios, stock, recepción, recupero y gestión operativa.</p>
+  </div>
+  <div class="periodo"><span>Período</span><strong>${per}</strong></div>
+</div></header>
+
+<nav><div class="nav-wrap">
+  <button class="tab active" onclick="showView('resumen',this)">📊 Resumen Ejecutivo</button>
+  <button class="tab" onclick="showView('entregas',this)">🚗 Entregas</button>
+  <button class="tab" onclick="showView('contratos',this)">📋 Contratos C.M.</button>
+  <button class="tab" onclick="showView('accesorios',this)">🔧 Accesorios</button>
+  <button class="tab" onclick="showView('stock',this)">📦 Stock</button>
+  <button class="tab" onclick="showView('recepcion',this)">🏭 Recepción</button>
+  <button class="tab" onclick="showView('recupero',this)">🛡 Recupero</button>
+  <button class="tab" onclick="showView('gestion',this)">⚙ Gestión / RRHH</button>
+</div></nav>
+
+<main>
+
+<section id="resumen" class="view active">
+  <div class="grid two">
+    <div class="card">
+      <h2>Desempeño del mes contra objetivo</h2>
+      <div class="semaforo">
+        <div class="sem"><i style="background:${D.tasaCm>=30?"#1F7A4D":D.tasaCm>=24?"#C98A00":"#D92D20"}"></i>
+          <b>${D.tasaCm}%</b><div><div class="n">Contratos de mantenimiento</div><div class="d">${D.cm.length} vendidos sobre ${D.com.length} entregas comerciales · objetivo 30%</div></div></div>
+        <div class="sem"><i style="background:${D.obj&&D.pesosAc>=D.obj?"#1F7A4D":D.obj&&D.pesosAc>=D.obj*.8?"#C98A00":"#D92D20"}"></i>
+          <b>${D.obj?pct(D.pesosAc,D.obj):"—"}%</b><div><div class="n">Facturación de accesorios</div><div class="d">${mil(D.pesosAc)} ${D.obj?`sobre un objetivo de ${mil(D.obj)}`:"· objetivo sin cargar"}</div></div></div>
+        <div class="sem"><i style="background:${D.tasaAc>=50?"#1F7A4D":D.tasaAc>=35?"#C98A00":"#D92D20"}"></i>
+          <b>${D.tasaAc}%</b><div><div class="n">Unidades equipadas</div><div class="d">${D.conAcc} de ${D.com.length} entregas comerciales salieron con accesorios</div></div></div>
+        <div class="sem"><i style="background:${D.stock&&D.ok/D.stock>=.9?"#1F7A4D":D.stock&&D.ok/D.stock>=.8?"#C98A00":"#D92D20"}"></i>
+          <b>${pct(D.ok,D.stock)}%</b><div><div class="n">Estado operativo del stock</div><div class="d">${D.ok} unidades OK para entregar sobre ${D.stock} en stock</div></div></div>
+        <div class="sem"><i style="background:${D.segMes>0?"#1F7A4D":D.segMes<0?"#D92D20":"#667085"}"></i>
+          <b>${D.seg.length||D.segAnio?mil(D.segMes):"—"}</b><div><div class="n">Recupero por seguros</div><div class="d">${D.seg.length?`${D.seg.length} reclamos facturados al seguro en el mes`:"sin datos cargados para el período"}</div></div></div>
+      </div>
+      <p class="caption">Cada indicador se presenta por separado y contra su propio objetivo. No se consolidan en un único porcentaje porque miden cosas de distinta naturaleza y no hay una ponderación formal definida.</p>
+    </div>
+    <div class="card">
+      <h2>Lectura ejecutiva</h2>
+      <p class="insight">
+        ${D.nom} registra <b>${D.com.length} entregas comerciales</b>${D.mayo.length?`, más ${D.mayo.length} operaciones mayoristas, totalizando ${D.ent.length} unidades por canal`:""}.
+        Se vendieron <b>${D.cm.length} contratos</b> de mantenimiento, alcanzando una tasa del <b>${D.tasaCm}%</b> sobre las entregas comerciales${D.tasaCm>=30?", por encima del objetivo del 30%":`, ${30-D.tasaCm} puntos por debajo del objetivo del 30%`}.
+        Accesorios facturó <b>${mon(D.pesosAc)}</b>, con ${D.conAcc} unidades equipadas (${D.tasaAc}%).
+        El stock cierra en ${D.stock} unidades${D.seg.length||D.segAnio?` y el recupero de seguros presenta un resultado de ${mon(D.segMes)} s/IVA`:""}.
+      </p>
+      <div class="grid two">
+        ${kpi("Entregas", D.com.length, (D.mayo.length?`+ ${D.mayo.length} mayoristas`:"comerciales")+vs(D.com.length,D.ant.ent), `${D.com.length} entregas comerciales${D.mayo.length?` + ${D.mayo.length} mayoristas`:""}.`)}
+        ${kpi("C.M.", D.tasaCm+"%", `${D.cm.length} vendidos`+vs(D.tasaCm,D.ant.tasaCm,true), `${D.cm.length} contratos / ${D.com.length} entregas comerciales.`)}
+        ${kpi("Accesorios", mil(D.pesosAc), mon(D.pesosAc)+vs(D.pesosAc,D.ant.pesos), `Facturación de accesorios de ${D.nom.toLowerCase()}.`)}
+        ${(D.seg.length||D.segAnio)
+          ? kpi("Recupero del seguro", mil(D.segAnio), `acumulado ene-${D.nom.slice(0,3).toLowerCase()}`, `Plata recuperada de las aseguradoras en lo que va del año, sin IVA.`)
+          : kpi("Estado operativo", pct(D.ok,D.stock)+"%", `${D.ok} de ${D.stock}`, `Unidades OK para entregar sobre el stock físico de hoy.`)}
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px"><h2>Evolución entregas y tasa C.M.</h2><div id="resCM" class="chart"></div></div>
+  <div class="section-footer">${pie}</div>
+</section>
+
+<section id="entregas" class="view">
+  <div class="grid kpis">
+    ${kpi("Entregas comerciales", D.com.length, D.nom+vs(D.com.length,D.ant.ent))}
+    ${top(D.canal,3).map(([k,v]) => kpi(k, v, "Canal")).join("")}
+    ${kpi("Modelo líder", (top(D.modelo,1)[0]||["—",0])[1], (top(D.modelo,1)[0]||["—"])[0])}
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h2>Tipos de entregas</h2><div id="tiposEntrega"></div><p class="caption">Se muestran los valores informados por canal.</p></div>
+    <div class="card"><h2>Modelos más entregados</h2><div id="modelosEntrega"></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h2>Lectura de entregas</h2>
+    <p class="insight">${D.nom} registra ${D.com.length} entregas comerciales: ${top(D.canal,3).filter(([k]) => CANAL_BASE.includes(k)).map(([k,v]) => `${v} de ${k}`).join(" y ")}.${D.mayo.length?` Además, se informan ${D.mayo.length} operaciones mayoristas, totalizando ${D.ent.length} unidades por canal.`:""} ${top(D.modelo,2).length>1?`${top(D.modelo,1)[0][0]} lidera con ${top(D.modelo,1)[0][1]} unidades, seguida por ${top(D.modelo,2)[1][0]} con ${top(D.modelo,2)[1][1]}.`:""}</p>
+  </div>
+  <div class="section-footer">${pie}</div>
+</section>
+
+<section id="contratos" class="view">
+  <div class="grid kpis">
+    ${kpi("Vendidos", D.cm.length, "C.M."+vs(D.cm.length,D.ant.cm))}
+    ${kpi("Tasa", D.tasaCm+"%", "Objetivo base 30%"+vs(D.tasaCm,D.ant.tasaCm,true))}
+    ${kpi("En entrega", pct(D.enEnt,D.cm.length)+"%", "Momento venta")}
+    ${kpi("Post entrega", pct(D.cm.length-D.enEnt,D.cm.length)+"%", "Seguimiento")}
+    ${kpi("Objetivo base", "30%", "Referencia")}
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h2>Evolución mensual C.M.</h2><div id="contratosEvol" class="chart"></div></div>
+    <div class="card"><h2>Momento de venta de C.M.</h2><div id="momentoCM" class="chart"></div></div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h2>C.M. por modelo</h2><div id="motivosCM"></div></div>
+    <div class="card"><h2>Lectura contratos</h2><p class="insight">La tasa de C.M. cierra en ${D.tasaCm}%${D.tasaCm>=30?", por encima del objetivo base del 30%":`, ${30-D.tasaCm} puntos por debajo del objetivo base del 30%`}. Se registran ${D.cm.length} contratos sobre ${D.com.length} entregas comerciales; el ${pct(D.enEnt,D.cm.length)}% se concretó en la entrega y el ${pct(D.cm.length-D.enEnt,D.cm.length)}% en post entrega.</p></div>
+  </div>
+  <div class="section-footer">${pie}</div>
+</section>
+
+<section id="accesorios" class="view">
+  <div class="grid kpis">
+    ${kpi("Facturación", mil(D.pesosAc), D.nom+vs(D.pesosAc,D.ant.pesos))}
+    ${kpi("Objetivo", D.obj?mil(D.obj):"—", "Mes")}
+    ${kpi("Con accesorios", D.conAcc, `de ${D.com.length} entregas`)}
+    ${kpi("Tasa accesorios", D.tasaAc+"%", `${D.conAcc} de ${D.com.length}`+vs(D.tasaAc,D.ant.tasaAc,true))}
+    ${kpi("Avance objetivo $", D.obj?pct(D.pesosAc,D.obj)+"%":"—", D.obj?`Sobre ${mil(D.obj)}`:"")}
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h2>Unidades entregadas vs unidades con accesorios</h2><div id="accUnidades" class="chart"></div></div>
+    <div class="card"><h2>Facturación mensual accesorios</h2><div id="accFacturacion"></div></div>
+  </div>
+  <div class="section-footer">${pie}</div>
+</section>
+
+<section id="stock" class="view">
+  <div class="grid kpis">
+    ${kpi("Control stock", D.ctrl+"%", "Plan de control periódico")}
+    ${kpi("Stock actual", D.stock, "Unidades")}
+    ${kpi("OK", D.ok, "Unidades")}
+    ${kpi("Con novedad", D.mal, "Unidades")}
+    ${kpi("Bajo techo", D.techo.ocupan.length+" / "+D.techo.cupos, D.techo.sobran?`faltan ${D.techo.sobran} lugares`:"entra todo")}
+  </div>
+  ${D.dias.length?`<div class="grid two" style="margin-top:16px">
+    <div class="card"><h2>Días desde la recepción hasta la entrega</h2>
+      <div class="grid two" style="margin-bottom:10px">
+        ${kpi("Promedio", prom(D.dias)+" d", `${D.dias.length} unidades entregadas en ${D.nom.toLowerCase()}`+vs(prom(D.dias),D.ant.dias))}
+        ${kpi("Mediana", med(D.dias)+" d", "la mitad salió antes de este plazo")}
+      </div>
+      <div id="rotacion" class="chart"></div>
+      <p class="caption"><b>Cómo leerlo:</b> este plazo va desde que la unidad se recibe de fábrica hasta que se entrega al cliente, y depende de dos cosas: de la preparación del sector y de cuánto tarda en venderse. No mide por sí solo el tiempo de trabajo de Pre-Entregas. Para separarlos haría falta registrar la fecha en que la unidad queda lista, que hoy no se carga.</p>
+    </div>
+    <div class="card"><h2>Stock por modelo</h2><div id="stockModelo"></div></div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h2>Composición del stock</h2>
+      <table>
+        <tr><th>Estado</th><th>Unidades</th></tr>
+        <tr><td>OK para entregar</td><td>${D.ok}</td></tr>
+        <tr><td>Con alguna novedad</td><td>${D.mal}</td></tr>
+        <tr><td>Con plan de control periódico</td><td>${STK.filter(r=>r.ctrl).length} de ${D.stock}</td></tr>
+      </table>
+    </div>`:`<div class="grid two" style="margin-top:16px">
+    <div class="card"><h2>Stock por modelo</h2><div id="stockModelo"></div></div>`}
+    <div class="card"><h2>Lectura stock</h2>
+      <p class="insight">El stock cierra en ${D.stock} unidades con un ${D.ctrl}% de control periódico. Se registran ${D.ok} unidades OK para entregar y ${D.mal} con alguna novedad. El estado operativo alcanza el ${pct(D.ok,D.stock)}%.</p>
+      <p class="insight" style="margin-top:12px"><b>Capacidad bajo techo:</b> el depósito de Las Lomas tiene ${D.techo.cupos} lugares cubiertos y hoy hay ${D.techo.ocupan.length} unidades ocupándolos. Están por entrar ${D.techo.entran} —${D.techo.sinAlta.length} desde fábrica y ${D.techo.enSalta.length} a trasladar desde Salta— y van a salir ${D.techo.porSalir.length} ya facturadas, lo que proyecta <b>${D.techo.proy} unidades</b>.${D.techo.sobran?` Eso deja ${D.techo.sobran} unidades fuera de la cubierta, en la playa compartida del fondo del predio, con la exposición a granizo que eso implica.`:" La capacidad cubierta alcanza para el ingreso previsto."}</p>
+    </div>
+  </div>
+  <div class="section-footer">${pie}</div>
+</section>
+
+<section id="recepcion" class="view">
+  <div class="grid two">
+    <div class="card"><h2>Recepción ${a}</h2><div id="recep2026" class="chart"></div></div>
+    <div class="card"><h2>Modelos recibidos – ${per}</h2><div id="recepHist" class="chart"></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h2>Lectura recepción</h2>
+    <p class="insight">La recepción ${a} acumula ${D.sRec.reduce((s,v)=>s+v,0)} unidades entre enero y ${D.nom.toLowerCase()}. ${D.nom} registra el ingreso de ${D.rec.length} unidades${m>1?`, contra ${D.sRec[m-2]} del mes anterior`:""}.</p>
+  </div>
+  <div class="section-footer">${pie}</div>
+</section>
+
+<section id="recupero" class="view">
+  ${(D.seg.length||D.segAnio) ? `<div class="grid kpis">
+    ${kpi(D.nom, mil(D.segMes), "Seguro s/IVA")}
+    ${kpi(`Acumulado ene-${D.nom.slice(0,3).toLowerCase()}`, mil(D.segAnio), "Seguro s/IVA")}
+    ${kpi("Mayor mes", MESES[D.mejorSeg], mil(D.segSerie[D.mejorSeg]))}
+    ${kpi("Reclamos del mes", D.seg.length, "Facturados al seguro")}
+    ${kpi("Resultado", D.segMes>=0?"Positivo":"Negativo", mon(D.segMes))}
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h2>Ganancia s/IVA seguro</h2><div id="recuperoSeguros"></div></div>
+    <div class="card"><h2>Lectura recupero</h2>
+      <p class="insight">${D.nom} registra un resultado de recupero por seguros de ${mon(D.segMes)} s/IVA sobre ${D.seg.length} reclamos facturados. El acumulado enero-${D.nom.toLowerCase()} queda en ${mon(D.segAnio)} s/IVA. ${MESES[D.mejorSeg]} es el mes de mayor recupero del período, con ${mon(D.segSerie[D.mejorSeg])}.</p>
+      ${D.seg.length?`<table style="margin-top:14px"><tr><th>Proveedor</th><th>Reclamos</th></tr>
+      ${orden(contar(D.seg, r => r.prov || "Sin dato"),6).map(([k,v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("")}</table>`:""}
+    </div>
+  </div>` : `<div class="card"><h2>Recupero por seguros</h2>
+    <p class="insight">No hay datos de recupero cargados para este período. El libro del seguro se envía al tablero con la macro <b>EnviarSeguro</b> del archivo de control de stock, que se corre una vez por mes al cerrar el seguro.</p></div>`}
+  <div class="section-footer">${pie}</div>
+</section>
+
+<section id="gestion" class="view">
+  <div class="grid three">
+    ${RRHH_CAMPOS.map(([k,t]) => T[k] ? `<div class="card"><h2>${t}</h2><p class="insight">${texto(k,"")}</p></div>` : "").join("")}
+    ${RRHH_CAMPOS.every(([k]) => !T[k]) ? `<div class="card"><h2>Gestión del sector</h2><p class="insight">Sin novedades cargadas para este período.</p></div>` : ""}
+  </div>
+  <div class="section-footer">${pie}</div>
+</section>
+
+</main>
+<script>
+${JS}
+<\/script>
+</body></html>`;
+}
+
+function bajarInforme(){
+  const b = new Blob([informeHTML(F.mes, F.anio)], {type:"text/html;charset=utf-8"});
+  const u = URL.createObjectURL(b), el = document.createElement("a");
+  el.href = u; el.download = `Informe de Gestion PDI ${MESES[F.mes-1]} ${F.anio} - Autosol Jujuy.html`;
+  document.body.appendChild(el); el.click(); el.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 8000);
+}
+function verInforme(){
+  const b = new Blob([informeHTML(F.mes, F.anio)], {type:"text/html;charset=utf-8"});
+  const u = URL.createObjectURL(b);
+  if (!window.open(u, "_blank")) alert("El navegador bloqueó la ventana nueva. Usá el botón de descargar.");
+  setTimeout(() => URL.revokeObjectURL(u), 30000);
+}
+
+MOD.informe={ic:"📄",t:"Informe",d:"El informe mensual de gestión, listo para mandar",r(S){
+  const T=textosRRHH(), D=datosInforme(F.mes,F.anio);
+  const falta=[];
+  if(!SEG.length) falta.push("el recupero del seguro — se manda con la macro <b>EnviarSeguro</b> del Excel");
+  if(RRHH_CAMPOS.every(([k])=>!T[k])) falta.push("las novedades de gestión y RRHH — se escriben acá abajo");
+  return `
+  <div class="card" style="border-left:4px solid var(--acc);margin-bottom:14px">
+    <h3>Informe de ${MESES[F.mes-1].toLowerCase()} ${F.anio} <span>para mandarle a Jorge</span></h3>
+    <p class="sub" style="margin-bottom:12px">Baja un archivo que se abre solo en cualquier computadora, sin internet, con el mismo formato de siempre: resumen ejecutivo, entregas, contratos, accesorios, stock, recepción, recupero y gestión. Los números salen del tablero.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn pri" onclick="bajarInforme()">📄 Descargar el informe</button>
+      <button class="btn" onclick="verInforme()">👁 Verlo antes</button>
+    </div>
+    ${falta.length?`<p class="sub" style="margin:12px 0 0;color:var(--warn)"><b>Le falta:</b> ${falta.join(" · ")}.</p>`:""}
+    <p class="sub" style="margin:10px 0 0">El mes que se informa es el que está elegido arriba, en los filtros. Hoy: <b>${MESES[F.mes-1]} ${F.anio}</b>.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:14px"><h3>Lo que va a decir <span>un vistazo antes de bajarlo</span></h3>
+    <div class="kpis" style="margin:0">
+      ${kpi(fmt(D.com.length),"Entregas comerciales",D.mayo.length?`<div class="d">+ ${D.mayo.length} mayoristas</div>`:"")}
+      ${kpi(D.tasaCm+"%","Tasa de contratos",`<div class="d">${D.cm.length} vendidos · objetivo 30%</div>`)}
+      ${kpi(mill(D.pesosAc),"Accesorios",D.obj?`<div class="d">${Math.round(D.pesosAc/D.obj*100)}% del objetivo</div>`:"")}
+      ${kpi(D.tasaAc+"%","Unidades equipadas",`<div class="d">${D.conAcc} de ${D.com.length}</div>`)}
+      ${kpi(SEG.length?mill(D.segMes):"—","Recupero del seguro",SEG.length?`<div class="d">${D.seg.length} reclamos</div>`:'<div class="d">sin datos</div>')}
+    </div>
+  </div>
+
+  <div class="card"><h3>Gestión y RRHH <span>lo único que se escribe a mano</span></h3>
+    <p class="sub" style="margin-bottom:12px">Son los hechos del mes que ningún sistema sabe: reuniones, auditorías, licencias. Quedan guardados en esta computadora, así el mes que viene arrancás del anterior y solo corregís lo que cambió. El que dejes vacío no aparece en el informe.</p>
+    ${RRHH_CAMPOS.map(([k,t])=>`<div style="margin-bottom:12px">
+      <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">${t}</label>
+      <textarea id="rh_${k}" rows="2" style="width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:14px;background:var(--card);color:var(--ink);resize:vertical">${esc(T[k]||"")}</textarea>
+    </div>`).join("")}
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn pri" onclick="guardarRRHH()">Guardar los textos</button>
+      <span id="rhAviso" style="font-size:13px;color:var(--ok)"></span>
+    </div>
+  </div>`;
+}};
+
+/* ═══ PREPARACIÓN ══════════════════════════════════════════════════════════
+   El trabajo del sector no son las entregas. Una unidad que se prepara y se
+   despacha a Salta, a un mayorista o al salón ocupó box y técnico igual que una
+   que se entrega a un cliente. Las entregas son lo que vendió Ventas; los
+   armados son lo que hizo Pre-Entregas.
+
+   Dos aclaraciones que importan para no decir una cosa por otra:
+
+   · El tramo recepción → armado NO mide la velocidad del sector. La unidad no se
+     arma cuando llega, se arma cuando se la va a necesitar. Por eso acá se lo
+     llama "antelación" y no "tiempo de preparación".
+   · El check list no dice si el control está hecho: dice dónde está el papel.
+     Vacío = se fue con la unidad al legajo. En custodia = guardado acá con el
+     manual y el duplicado. Archivo N = reventa, quedó archivado.
+   ──────────────────────────────────────────────────────────────────────── */
+
+const dif = (a,b) => (!a||!b) ? null :
+  Math.round((new Date(b+"T00:00:00") - new Date(a+"T00:00:00"))/864e5);
+
+function preparacion(){
+  /* El canal de las entregas, para los armados que no tienen el tipo cargado */
+  const canalPorInt = {};
+  ENT.forEach(r => { if (r.int) canalPorInt[r.int] = r.canal; });
+
+  const arm = REC.filter(r => inPer(r.fArm));
+  const col = ACC.filter(r => inPer(r.fTurno || r.f));
+
+  /* Antelación: cuántos días antes de la entrega quedó lista la unidad.
+     Se mide sobre las entregas del período, que es lo que se le promete al cliente. */
+  const entregadas = REC.filter(r => inPer(r.fEnt));
+  const antel = [], aRevisar = [];
+  entregadas.forEach(r => {
+    const d = r.fArm ? dif(r.fArm, r.fEnt) : null;
+    if (d === null || d < 0) aRevisar.push(r); else antel.push(d);
+  });
+
+  const porDestino = {}, porPersona = {}, porTecnico = {};
+  arm.forEach(r => {
+    const d = tit(r.tipo || canalPorInt[r.int] || "Sin cargar");
+    porDestino[d] = (porDestino[d] || 0) + 1;
+    const q = r.armadoPor || "Sin cargar";
+    porPersona[q] = (porPersona[q] || 0) + 1;
+  });
+  col.forEach(r => { const q = r.tec || "Sin cargar"; porTecnico[q] = (porTecnico[q] || 0) + 1; });
+
+  /* Documentación: es estado de hoy, no del período */
+  const custodia = REC.filter(r => r.chk === "custodia");
+  const archivos = {};
+  REC.forEach(r => { if (r.chk === "archivo") archivos[r.archivo] = (archivos[r.archivo] || 0) + 1; });
+  /* El control: la unidad ya se entregó pero el check sigue figurando guardado acá.
+     Esos papeles tendrían que haber ido al legajo. */
+  const sinMover = custodia.filter(r => r.fEnt);
+
+  return {
+    arm, col, entregadas, antel, aRevisar, porDestino, porPersona, porTecnico,
+    custodia, archivos, sinMover,
+    trabajos: arm.length + col.length,
+    antelProm: prom(antel), antelMed: med(antel)
+  };
+}
+
+MOD.preparacion={ic:"🔧",t:"Preparación",d:"Lo que trabajó el sector: armados, colocaciones y tiempos",r(S){
+  const P = preparacion();
+  const listas = P.entregadas.length - P.aRevisar.length;
+  const okEntregas = P.entregadas.length && P.aRevisar.length === 0;
+  CSV = () => [["Preparación", perTxt()],
+    ["Unidades armadas", P.arm.length],["Colocaciones de accesorios", P.col.length],
+    ["Trabajos totales", P.trabajos],["Entregas del período", P.entregadas.length],
+    ["Entregas con la unidad lista antes", listas],
+    ["Antelación promedio (días)", P.antelProm],[],
+    ["Armados por persona"], ...orden(P.porPersona),[],
+    ["Colocaciones por técnico"], ...orden(P.porTecnico)];
+
+  return `
+  <div class="kpis">
+    ${kpi(fmt(P.arm.length),"Unidades armadas","<div class=\"d\">preparadas en el período</div>")}
+    ${kpi(fmt(P.col.length),"Colocaciones de accesorios","<div class=\"d\">colocadas por el sector</div>")}
+    ${kpi(fmt(P.trabajos),"Trabajos del sector",`<div class="d">contra ${fmt(base(S.e))} entregas comerciales</div>`)}
+    ${kpi(P.antel.length?P.antelProm+" d":"—","Antelación del armado","<div class=\"d\">antes de la fecha de entrega</div>")}
+    ${kpi(fmt(P.custodia.length),"Legajos en custodia","<div class=\"d\">check guardado acá</div>")}
+  </div>
+
+  <div class="card" style="border-left:4px solid ${okEntregas?"var(--ok)":"var(--warn)"};margin:14px 0">
+    <h3>${okEntregas?"Ninguna entrega esperó por el sector":`${listas} de ${P.entregadas.length} entregas con la unidad lista a tiempo`} <span>${perTxt()}</span></h3>
+    ${P.entregadas.length?`<p class="sub" style="margin-bottom:10px">De las <b>${P.entregadas.length}</b> entregas del período, <b>${listas}</b> tenían la unidad armada antes de la fecha de entrega${P.antel.length?`, con <b>${P.antelProm} días</b> de antelación promedio y <b>${P.antelMed}</b> de mediana`:""}.${P.aRevisar.length?` Quedan <b>${P.aRevisar.length}</b> para revisar: la fecha de armado figura después de la entrega o está sin cargar, que casi siempre es un tema de orden de carga y no de demora real.`:" No hay ninguna excepción."}</p>`
+      :`<p class="sub">Sin entregas registradas en el período.</p>`}
+    <p class="sub" style="margin:0">Este es el dato propio del sector: mide si la unidad estuvo lista a tiempo, no cuánto tardó en venderse.</p>
+  </div>
+
+  <div class="g g2">
+    <div class="card"><h3>A dónde fueron las unidades armadas <span>${perTxt()}</span></h3>
+      ${barras(P.porDestino,10)}
+      <p class="sub" style="margin-top:8px">Mayorista, sucursal Salta y salón también llevan preparación: no son entregas a cliente, pero ocupan box y técnico igual.</p>
+    </div>
+    <div class="card"><h3>Documentación <span>estado de hoy</span></h3>
+      <p class="sub" style="margin-bottom:10px">El check list no dice si el control está hecho: dice dónde está el papel.</p>
+      <div class="al">
+        <div class="a n"><i></i><div><b>${P.custodia.length} legajos en custodia</b>
+          <p>El check está guardado acá, con el manual y el duplicado, esperando la entrega o el traslado.</p></div></div>
+        ${orden(P.archivos).sort((a,b)=>b[0]-a[0]).map(([n,c])=>`<div class="a n"><i></i><div><b>${c} en el archivo n° ${n}</b>
+          <p>Reventas: el check quedó archivado acá.</p></div></div>`).join("")}
+        <div class="a ${P.sinMover.length?"b":"o"}"><i></i><div><b>${P.sinMover.length?`${P.sinMover.length} entregadas con el check sin mover`:"Sin papeles pendientes"}</b>
+          <p>${P.sinMover.length?"La unidad ya salió y el check sigue figurando guardado acá: esos papeles tendrían que estar en el legajo.":"No hay unidades entregadas con el check pendiente de subir al legajo."}</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g g2" style="margin-top:14px">
+    <div class="card"><h3>Armados por persona <span>${perTxt()}</span></h3>${barras(P.porPersona,12)}</div>
+    <div class="card"><h3>Colocaciones de accesorios por técnico <span>${perTxt()}</span></h3>
+      ${P.col.length?barras(P.porTecnico,12):'<div class="vacio">Sin colocaciones registradas en el período.</div>'}
+      <p class="sub" style="margin-top:8px">Va separado del armado a propósito: el que arma la unidad no siempre es el que coloca los accesorios.</p>
+    </div>
+  </div>`;
+}};
+const ORDEN=["resumen","preparacion","entregas","envios","contratos","accesorios","recepciones","stock","unidades","vendedores","rotacion","informe"];
 function armarNav(){
   const alertas=STK.filter(r=>r.patio>90||!r.ctrl).length;
   $("nav").innerHTML=ORDEN.filter(k=>MOD[k]).map(k=>[k,MOD[k]]).map(([k,m])=>`<button data-k="${k}" class="${k===actual?"on":""}" onclick="ir('${k}')"><span class="ic">${m.ic}</span>${m.t}${k==="stock"&&alertas?`<span class="bdg">${alertas}</span>`:""}</button>`).join("");
