@@ -291,6 +291,131 @@ th{z-index:2}
 .aro-n{font-family:var(--disp);font-weight:700;font-size:38px;line-height:1.05;margin-top:4px}
 .aro-d{font-size:12px;color:var(--mute);margin-top:2px}
 .aro{width:64px;height:64px;flex:none}
+
+/* ═══ TABLERO DE GESTIÓN ═══════════════════════════════════════════════════
+   Pantalla única del sector. Va siempre en oscuro, con cualquier tema, porque
+   está pensada para quedar abierta en un monitor. Todo lo de acá adentro usa
+   sus propias variables (--t-*), así no se mezcla con el resto del portal.
+   ──────────────────────────────────────────────────────────────────────── */
+.tb{--t-bg:#081221;--t-card:#10203a;--t-card2:#172b4b;--t-line:#24395c;--t-tx:#f2f7ff;--t-tx2:#cbd9ef;--t-mu:#a3b6d2;
+  --t-az:#3987e5;--t-nj:#d95926;--t-ag:#12a594;--t-vi:#8e6ae0;--t-gr:#8fa3bf;
+  --t-ok:#2fbd7e;--t-warn:#fab219;--t-bad:#ff6b6b;
+  background:var(--t-bg);color:var(--t-tx);border-radius:16px;padding:14px;display:grid;gap:12px;min-width:0}
+.tb button{font:inherit;color:inherit;text-align:left;cursor:pointer;border:0;background:none}
+.tb button:focus-visible{outline:2px solid var(--t-tx);outline-offset:2px}
+.tb-top{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;padding:2px 4px}
+.tb-top b{font-family:var(--disp);font-size:22px;letter-spacing:.02em;text-transform:uppercase}
+.tb-top span{color:var(--t-mu);font-size:12px;margin-left:10px}
+.tb-live{font-size:12px;color:var(--t-tx2);display:flex;align-items:center;gap:8px}
+.tb-live i{width:8px;height:8px;border-radius:50%;background:var(--t-ok);animation:tbPulso 2s infinite}
+@keyframes tbPulso{0%{box-shadow:0 0 0 0 rgba(47,189,126,.6)}70%{box-shadow:0 0 0 8px rgba(47,189,126,0)}100%{box-shadow:0 0 0 0 rgba(47,189,126,0)}}
+@media(prefers-reduced-motion:reduce){.tb-live i{animation:none}}
+
+/* Fila de indicadores */
+.tb-k{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.tb .tb-t{background:var(--t-card);border:1px solid var(--t-line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0;transition:border-color .16s,transform .16s}
+.tb .tb-t:hover{border-color:var(--c);transform:translateY(-2px)}
+.tb-th{display:flex;align-items:center;gap:10px}
+.tb-ic{width:34px;height:34px;border-radius:9px;background:var(--c);color:#04101f;display:grid;place-items:center;flex:none}
+.tb-ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tb-tl{font-family:var(--disp);font-weight:600;font-size:15px;letter-spacing:.03em;text-transform:uppercase;color:var(--t-tx2);line-height:1.1}
+.tb-n{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tb-n b{font-family:var(--disp);font-weight:700;font-size:40px;line-height:1;letter-spacing:-.01em;white-space:nowrap}
+.tb-dl{font-size:13px;font-weight:700}
+.tb-dl.up{color:var(--t-ok)}.tb-dl.dn{color:var(--t-bad)}
+.tb-n small{font-size:11px;color:var(--t-mu);display:block}
+.tb-sp{display:flex;gap:2px;height:8px;border-radius:99px;overflow:hidden;background:var(--t-card2)}
+.tb-sp i{display:block;height:100%}
+.tb-sl{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--t-tx2)}
+.tb-sl span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c);margin-right:5px}
+.tb-pie{font-size:12px;color:var(--t-mu);margin-top:auto}
+.tb-pie b{color:var(--t-tx)}
+
+/* Tarjetas */
+.tb-g{display:grid;gap:12px}
+.tb-g.r2{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr)}
+.tb-g.r3{grid-template-columns:repeat(4,minmax(0,1fr))}
+.tb-g.r4{grid-template-columns:minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,1fr)}
+.tb-c{background:var(--t-card);border:1px solid var(--t-line);border-radius:12px;padding:14px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.tb-c h4{font-family:var(--disp);font-weight:600;font-size:16px;letter-spacing:.03em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.tb-c h4 span{font-family:var(--body);font-weight:400;font-size:11px;letter-spacing:0;text-transform:none;color:var(--t-mu)}
+.tb-nota{font-size:11px;color:var(--t-mu);margin-top:auto}
+.tb .vacio{color:var(--t-mu)}
+
+/* Flujo */
+.tb-fl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
+.tb .tb-fl button{background:var(--c);color:#04101f;padding:10px 6px 10px 20px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,0 100%,12px 50%);min-width:0}
+.tb .tb-fl button:first-child{clip-path:polygon(0 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,0 100%);padding-left:12px;border-radius:8px 0 0 8px}
+.tb-fl small{display:block;font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:10px}
+.tb-fl b{font-family:var(--disp);font-size:30px;line-height:1}
+.tb-pe{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tb .tb-pe button{background:var(--t-card2);border:1px solid var(--t-line);border-radius:10px;padding:10px;min-height:44px}
+.tb .tb-pe button:hover{border-color:var(--t-tx2)}
+.tb-pe b{display:block;font-family:var(--disp);font-size:28px;line-height:1}
+.tb-pe small{display:block;font-size:11px;color:var(--t-tx2);margin-top:4px;line-height:1.25}
+
+/* Leyendas y listas */
+.tb-ley{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:12px;color:var(--t-tx2)}
+.tb-ley span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--c);margin-right:6px;vertical-align:-1px}
+.tb-dn{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:8px;align-items:center}
+.tb-dl2{display:grid;gap:6px;font-size:12px}
+.tb-dl2 div{display:grid;grid-template-columns:10px 1fr auto;gap:8px;align-items:center}
+.tb-dl2 i{width:10px;height:10px;border-radius:2px;background:var(--c)}
+.tb-dl2 span{color:var(--t-tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-dl2 b{font-variant-numeric:tabular-nums}
+
+/* Barras horizontales */
+.tb-hb{display:grid;gap:8px}
+.tb .tb-hb button{display:grid;grid-template-columns:minmax(74px,auto) 1fr 30px 38px;gap:8px;align-items:center;font-size:12px;min-height:26px;border-radius:6px;padding:2px 4px}
+.tb .tb-hb button:hover{background:var(--t-card2)}
+.tb-hb .tr{height:14px;background:var(--t-card2);border-radius:4px;overflow:hidden}
+.tb-hb .tr i{display:block;height:100%;background:var(--c);border-radius:0 4px 4px 0}
+.tb-hb b{text-align:right;font-variant-numeric:tabular-nums}
+.tb-hb em{font-style:normal;text-align:right;color:var(--t-mu);font-variant-numeric:tabular-nums}
+.tb-hb span{color:var(--t-tx2)}
+.tb-sub{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--t-mu);margin-top:2px}
+
+/* Techo */
+.tb-te{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.tb-aro{position:relative;width:108px;height:108px}
+.tb-aro svg{width:100%;height:100%;transform:rotate(-90deg)}
+.tb-aro div{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.tb-aro b{font-family:var(--disp);font-size:30px;line-height:1}
+.tb-aro small{font-size:10px;color:var(--t-mu)}
+.tb-tl2{display:grid;gap:6px;font-size:12px}
+.tb-tl2 div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--t-line);padding-bottom:5px}
+.tb-tl2 span{color:var(--t-tx2)}
+.tb-est{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.tb-est i{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+
+/* Accesorios y contratos */
+.tb-ac{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tb .tb-ac button{background:var(--t-card2);border:1px solid var(--t-line);border-radius:10px;padding:10px;min-width:0}
+.tb .tb-ac button:hover{border-color:var(--t-tx2)}
+.tb-ac small{display:block;font-size:11px;color:var(--t-tx2)}
+.tb-ac b{display:block;font-family:var(--disp);font-size:26px;line-height:1.1;white-space:nowrap}
+.tb-ac em{display:block;font-style:normal;font-size:11px;color:var(--t-mu)}
+.tb-pr{height:6px;background:var(--t-bg);border-radius:99px;overflow:hidden;margin-top:6px}
+.tb-pr i{display:block;height:100%;background:var(--c)}
+
+/* Alertas */
+.tb-chips{display:flex;gap:6px;flex-wrap:wrap}
+.tb-chip{font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;border:1px solid var(--c);color:var(--t-tx)}
+.tb-chip::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--c);margin-right:6px}
+.tb-al{display:grid;gap:6px}
+.tb .tb-al button{display:grid;grid-template-columns:78px minmax(0,1fr) 40px minmax(0,.9fr);gap:10px;align-items:center;background:var(--t-card2);border:1px solid var(--t-line);border-radius:10px;padding:8px 10px;font-size:12px;min-height:44px}
+.tb .tb-al button:hover{border-color:var(--c)}
+.tb-al .pr{font-weight:700;font-size:11px;display:flex;align-items:center;gap:6px}
+.tb-al .pr::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.tb-al b{font-family:var(--disp);font-size:22px;text-align:right;line-height:1}
+.tb-al em{font-style:normal;color:var(--t-mu)}
+.tb-okk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t-tx2)}
+.tb-okk::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--t-ok)}
+
+@media(max-width:1500px){.tb-k{grid-template-columns:repeat(3,minmax(0,1fr))}.tb-g.r3{grid-template-columns:repeat(2,minmax(0,1fr))}.tb-g.r4{grid-template-columns:repeat(2,minmax(0,1fr))}.tb-g.r4>:first-child{grid-column:1/-1}}
+@media(max-width:1150px){.tb-g.r2{grid-template-columns:repeat(2,minmax(0,1fr))}.tb-g.r2>:nth-child(2){grid-column:1/-1;order:-1}}
+@media(max-width:700px){.tb{padding:10px;border-radius:12px}.tb-k{grid-template-columns:repeat(2,minmax(0,1fr))}.tb-g.r2,.tb-g.r3,.tb-g.r4{grid-template-columns:minmax(0,1fr)}.tb-n b{font-size:32px}.tb .tb-al button{grid-template-columns:70px minmax(0,1fr) 34px}.tb-al em{grid-column:2/-1}.tb-top span{margin-left:0;display:block}}
+@media print{.tb{border-radius:0}.tb-live{display:none}}
 </style>
 </head>
 <body>
@@ -397,6 +522,8 @@ const TOKEN_KEY="gestionToken";   // sesión propia, distinta a la del Portal PD
 const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const $=id=>document.getElementById(id);
 const fmt=n=>Math.round(n).toLocaleString("es-AR");
+/* Una fecha aaaa-mm-dd escrita como se lee: 5/10 */
+const fdm=s=>s?(+String(s).slice(8,10))+"/"+(+String(s).slice(5,7)):"";
 const pesos=n=>"$ "+fmt(n);
 const mill=n=>"$ "+(n/1e6).toLocaleString("es-AR",{minimumFractionDigits:1,maximumFractionDigits:1})+" M";
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -435,7 +562,8 @@ function prepararDatos(){
   ACP=DATA.accPesos.map(r=>({f:r[0],t:r[1]}));
   CMV=DATA.cmv.map(r=>({f:r[0],mom:r[1],mod:r[2],vend:r[3]}));
   UNI=(DATA.unidades||[]).map(r=>({int:r[0],modelo:r[1],mod:r[2],color:r[3],destino:r[4]||"",suc:r[5],cert:r[6],pago:r[7],fact:r[8],vend:r[9],entregada:r[10],
-    sucVenta:r[11]||"", pat:r[12]||null,
+    sucVenta:r[11]||"", pat:r[12]||null, ped:r[13]||0, recib:r[14]||null,
+    fSalida:r[15]||null, fEnt:r[16]||null, tipo:r[17]||"", llega:r[18]||null,
     estado:!r[4]?"En viaje":(r[10]?"Entregada":(r[8]?"Facturada sin entregar":"Disponible"))}));
   JAV=(DATA.javier||[]).map(r=>({ent:r[0],fac:r[1],comprado:r[2],precio:r[3],motivo:(r[4]||"").trim(),mom:r[5],vin:r[6],mod:r[7]||"Sin dato"}));
   /* Recupero del seguro. f = fecha de facturación al seguro, que es el mes en que
@@ -728,8 +856,83 @@ function graficoCombinado(tipo){
 const CUPOS_TECHO = 100;      // lugares de uso real
 const CUPOS_MOTOS = 4;        // prestados, recuperables en una emergencia
 
-/* Las Lomas en cualquiera de sus formas: el depósito, el salón y las informadas */
-const enLomas = u => /LOMAS/.test(String(u.destino).toUpperCase());
+/* ── STOCK INMOVILIZADO ─────────────────────────────────────────────────
+   Unidades que el cliente nunca retiró —causas judiciales y casos parecidos—.
+   Están guardadas bajo llave y bajo techo: NO se pueden vender, pero ocupan un
+   lugar igual, y ese lugar es real. Por eso se cuentan para el techo y se dejan
+   afuera del stock disponible.
+
+   No salen de SIAC: son anteriores a 2025 y la macro manda la hoja REC. desde ese
+   año, así que no tienen fecha de recepción y el tablero no tiene cómo deducirlas.
+   Por eso van acá a mano. Si alguna se libera o entra otra, se agrega o se saca
+   de esta lista y listo: no hay que tocar nada más.
+   Última actualización: 4 de octubre de 2026, 15 unidades.
+   ──────────────────────────────────────────────────────────────────────── */
+const INMOVILIZADAS = [
+  ["38166", "Voyage 1.6 Trendline"],        ["33702", "Up! 1.0 Take 5P"],
+  ["38038", "Gol Trend 1.6L 5P Trendline"], ["23953", "Voyage Trendline"],
+  ["38435", "Gol Trend 1.6L 5P Trendline"], ["37962", "Voyage 1.6 Trendline"],
+  ["34204", "Gol Trend Trendline 5P"],      ["17126", "Suran 1.6L Trendline"],
+  ["34747", "CrossFox 1.6L Highline"],      ["22543", "Voyage 1.6L Comfortline"],
+  ["33306", "Up! 1.0 Take 5P"],             ["24887", "Gol Trend Serie 5P"],
+  ["23824", "Up! 1.0 high up! 3P"],         ["30123", "Gol Trend Serie 5P"],
+  ["38190", "Polo 1.6 5p Trendline"]
+];
+const ES_INMOVIL = {}; INMOVILIZADAS.forEach(u => ES_INMOVIL[u[0]] = 1);
+
+/* ── UNIDADES DEMO ──────────────────────────────────────────────────────
+   Las de prueba para clientes. Están en el predio y son nuestras, pero no ocupan
+   un lugar bajo techo. Las nuevas se reconocen solas, porque en REC. la entrega
+   queda cargada con tipo de venta UNIDAD DEMO. Las viejas son anteriores a 2025
+   y no tienen fila en REC., así que van acá a mano.
+   Última actualización: 4 de octubre de 2026. */
+const DEMOS = ["43972", "42575", "32103", "44844", "46025", "46175"];
+const ES_DEMO = {}; DEMOS.forEach(i => ES_DEMO[i] = 1);
+
+/* Las Lomas en cualquiera de sus formas: el depósito, el salón y las informadas.
+   Dos grupos están en el predio pero NO ocupan un lugar bajo el techo del depósito:
+   el salón de ventas, que está adentro del edificio, y las unidades demo que se
+   prestan a los clientes para probar. */
+const _up = u => String(u || "").toUpperCase();
+/* Los destinos que, para SIAC, son "acá". Las Lomas es el depósito; "Suc. Casa Central
+   - Jujuy" es como remiten desde Salta las unidades que nos mandan: es el destino
+   comercial, no dónde está parada la unidad. Quién decide de verdad es la fecha de
+   recepción: si está recibida, está en el predio, diga lo que diga el destino. */
+const enLomasAlgo = u => _up(u.destino).indexOf("LOMAS") >= 0;
+const esCasaCentral = u => _up(u.destino).indexOf("CASA CENTRAL") >= 0;
+const esDemo = u => ES_DEMO[u.int] || _up(u.tipo).indexOf("DEMO") >= 0;
+/* Inmovilizadas: SIAC las marca con destino LEGALES JUJUY. Mientras Pablo termina de
+   pasarlas todas a ese destino, las que faltan están en la lista de arriba. */
+const esInmovil = u => ES_INMOVIL[u.int] || _up(u.destino).indexOf("LEGALES") >= 0;
+const enSalon = u => enLomasAlgo(u) && _up(u.destino).indexOf("SALON") >= 0;
+const enLomas = u => (enLomasAlgo(u) || esCasaCentral(u)) && !enSalon(u) && !esDemo(u);
+
+/* Cuándo una unidad deja de ocupar lugar: cuando SALE DEL PREDIO, no cuando se le
+   carga la entrega. Hay tres casos que parecen una salida y no lo son:
+   – la entrega al salón, que es un movimiento adentro del mismo edificio;
+   – la unidad demo, que sigue siendo nuestra;
+   – la entrega con fecha futura, que todavía no pasó: se entrega mañana, hoy está acá.
+   Y una que sí lo es aunque no tenga entrega: la fecha de salida de la hoja REC. */
+const HOY_TXT = (() => { const h = new Date();
+  return h.getFullYear() + "-" + String(h.getMonth() + 1).padStart(2, "0") +
+         "-" + String(h.getDate()).padStart(2, "0"); })();
+/* Los canales en los que la entrega es definitiva: el cliente se lleva la unidad y no
+   vuelve. El salón y la demo son movimientos internos. Y el mayorista es el caso raro:
+   la unidad queda en exhibición en el local del revendedor y, si no se concreta la
+   venta, REGRESA y vuelve a estar en nuestro stock. Por eso una entrega a mayorista no
+   alcanza para darla por ida: tiene que tener además la fecha de salida cargada. */
+const CANAL_FINAL = ["TRADICIONAL", "PLANES", "CORPORATIVA", "PARTICULAR"];
+const canalFinal = t => CANAL_FINAL.some(c => t.indexOf(c) >= 0);
+const yaSalio = u => {
+  if (u.fSalida && u.fSalida <= HOY_TXT) return true;       // salió del predio
+  // La FECHA DE ENTREGA de REC. no es un dato propio: la trae de la hoja ENTR. con un
+  // BUSCARX, así que las dos dicen siempre lo mismo. Cuando una unidad vuelve —del
+  // mayorista, de un viaje que no se concretó— la entrega se saca de ENTR. y REC. se
+  // vacía sola. Sin fecha en ninguna de las dos, la unidad está en el predio.
+  if (!u.fEnt) return false;
+  if (u.fEnt > HOY_TXT) return false;             // la entrega es de mañana en adelante
+  return canalFinal(_up(u.tipo));
+};
 /* Depósitos y sucursales propias de Salta: los destinos que SIAC escribe empezando
    por "Salta ..." y la sucursal. Quedan afuera las reventas y los concesionarios de
    la zona —Madina Martín en Metán, Autolux Tartagal, Angel Simón—: esas unidades ya
@@ -743,9 +946,32 @@ const enSaltaPropio = u => {
 const esDeJujuy = u => u.suc === "Jujuy" || u.sucVenta === "Jujuy";
 
 function techo(){
-  const vivas = UNI.filter(u => !u.entregada);
-  const ocupan   = vivas.filter(enLomas);
-  const sinAlta  = vivas.filter(u => !u.destino && esDeJujuy(u));
+  /* SIAC se entera tarde de los dos lados, y la hoja REC. lo sabe antes:
+     – una unidad recibida ya ocupa lugar aunque todavía no tenga el alta, así que
+       su DESTINO está vacío y parecería venir de fábrica;
+     – una que ya salió sigue figurando en Las Lomas hasta que alguien la mueve.
+     Por eso el conteo del techo se corrige con la fecha de recepción y la de salida. */
+  /* Para contar como que está en el predio hace falta que esté RECIBIDA. Sin recepción
+     la unidad no llegó nunca —o llegó antes de 2025, que es desde cuándo manda la macro
+     la hoja REC.—, y entonces lo que diga el destino es historia vieja. Eso saca solas
+     a las que quedaron figurando en Las Lomas desde 2017 sin que nadie les diera salida. */
+  /* Las inmovilizadas y las demo se separan primero y no pasan por el filtro de la
+     recepción: son viejas, no tienen fila en REC., y aun así están en el predio.
+     Si alguna de las de la lista ya no figura en STOCK HOY, se agrega igual, porque
+     el lugar lo sigue ocupando. */
+  const visto = {};
+  const marcar = a => { a.forEach(u => visto[u.int] = 1); return a; };
+  const inmovil = marcar(UNI.filter(esInmovil))
+    .concat(INMOVILIZADAS.filter(x => !visto[x[0]]).map(x => ({ int: x[0], modelo: x[1] })));
+  const demo = marcar(UNI.filter(u => esDemo(u) && !esInmovil(u)))
+    .concat(DEMOS.filter(i => !visto[i]).map(i => ({ int: i, modelo: "—" })));
+
+  const vivas = UNI.filter(u => !esInmovil(u) && !esDemo(u) &&
+                                !yaSalio(u) && (u.recib || !u.destino));
+  const yaAca = vivas.filter(u => !u.destino && u.recib && esDeJujuy(u));
+  const ocupan   = vivas.filter(enLomas).concat(yaAca);
+  const salon    = vivas.filter(enSalon);
+  const sinAlta  = vivas.filter(u => !u.destino && !u.recib && esDeJujuy(u));
 
   /* De las que están en Salta, las que se traen YA son las facturadas con venta de
      Jujuy: esas Pablo se las pide a logística. Las que son de Jujuy pero todavía no
@@ -754,20 +980,42 @@ function techo(){
   const deJujuyEnSalta = vivas.filter(u => enSaltaPropio(u) && esDeJujuy(u));
   const enSalta  = deJujuyEnSalta.filter(u => u.fact);
   const salaLuego = deJujuyEnSalta.filter(u => !u.fact);
+  /* Las que ya se le pidieron a logística: Pablo escribe "TRAER DE SALTA" en la
+     F. DE RECEPCION de la hoja REC., en lugar de la fecha, porque todavía no llegó.
+     Esas tienen traslado en marcha; el resto hay que pedirlas. */
+  const pedidas  = enSalta.filter(u => u.ped);
+  const porPedir = enSalta.filter(u => !u.ped);
 
   /* De las que ocupan lugar hoy, las que salen pronto son las que ya están
      facturadas Y patentadas: con el dominio sacado se entregan dentro de la semana,
      diez días como mucho. Las facturadas sin patentar también van a salir, pero sin
      fecha, así que no se descuentan. */
-  const porSalir = ocupan.filter(u => u.fact && u.pat);
-  const salenLuego = ocupan.filter(u => u.fact && !u.pat);
+  /* Las que ya tienen fecha: la patentada se entrega dentro de la semana, y la
+     facturada con venta de sucursal Salta se va igual, haya sacado el dominio o no
+     —hay que sacarla del salón y reemplazarla—. Las demás facturadas también van a
+     salir, pero sin fecha, así que no se descuentan. */
+  const porSalir = ocupan.filter(u => u.fact && (u.pat || u.sucVenta === "Salta"));
+  const salenLuego = ocupan.filter(u => u.fact && !u.pat && u.sucVenta !== "Salta");
+  const paraSalta = ocupan.concat(salon).filter(u => u.fact && u.sucVenta === "Salta");
+  /* De las que vienen de fábrica, las que ya tienen fecha estimada de llegada: esas
+     son las que pueden entrar antes de una tormenta y hay que tenerlas en cuenta. */
+  const conFecha = sinAlta.filter(u => u.llega).sort((a, b) => a.llega < b.llega ? -1 : 1);
 
-  const entran   = sinAlta.length + enSalta.length;
-  const proy     = ocupan.length + entran - porSalir.length;
-  const bruto    = ocupan.length + entran;
+  /* Lo que va a entrar con fecha: las de fábrica más las que ya se pidieron a Salta.
+     Las otras facturadas que están allá van a venir, pero mientras no se las pidas a
+     logística no tienen fecha, así que no inflan la proyección. */
+  const entran   = sinAlta.length + pedidas.length;
+  /* El techo lo ocupan las que están a la venta MÁS las inmovilizadas: el lugar que
+     ocupa una unidad trabada judicialmente es igual de real que el de una por vender. */
+  const bajoTecho = ocupan.length + inmovil.length;
+  const proy     = bajoTecho + entran - porSalir.length;
+  const bruto    = bajoTecho + entran;
   return {
-    ocupan, sinAlta, enSalta, porSalir, entran, proy, bruto, salaLuego, salenLuego,
-    libres: CUPOS_TECHO - ocupan.length,
+    ocupan, salon, demo, sinAlta, enSalta, pedidas, porPedir, porSalir, entran, proy, bruto, salaLuego, salenLuego, yaAca, paraSalta, conFecha, proxima: conFecha.length ? conFecha[0].llega : null,
+    fisicas: ocupan.length + salon.length + inmovil.length,
+    saltaConDominio: porPedir.filter(u => u.pat),
+    inmovil, bajoTecho,
+    libres: CUPOS_TECHO - bajoTecho,
     sobran: Math.max(proy - CUPOS_TECHO, 0),
     sobranBruto: Math.max(bruto - CUPOS_TECHO, 0),
     cupos: CUPOS_TECHO
@@ -797,14 +1045,18 @@ function tarjetaTecho(){
     <div class="prog" style="height:10px"><span style="width:${Math.min(barra,100)}%;background:${col}"></span></div>
     <p class="sub" style="margin:8px 0 12px">${bajada}</p>
     <div class="al">
-      <div class="a n"><i></i><div><b>${T.ocupan.length} ocupando lugar hoy</b>
-        <p>Unidades en Las Lomas sin entregar.${T.porSalir.length ? ` De esas, ${T.porSalir.length} ya están facturadas y patentadas: con el dominio sacado se entregan dentro de los diez días.` : ""}${T.salenLuego.length ? ` Otras ${T.salenLuego.length} están vendidas pero sin patentar, así que no se descuentan todavía.` : ""}</p></div></div>
+      <div class="a n"><i></i><div><b>${T.ocupan.length} a la venta, ocupando lugar hoy</b>
+        <p>Unidades en el depósito de Las Lomas que todavía no salieron del predio.${T.yaAca.length ? ` Incluye ${T.yaAca.length} ya recibidas pero sin alta en SIAC: están acá igual.` : ""}${T.porSalir.length ? ` De esas, ${T.porSalir.length} ya tienen fecha: patentadas, que se entregan dentro de la semana, o facturadas con venta de sucursal Salta, que hay que sacar y reemplazar.` : ""}${T.salenLuego.length ? ` Otras ${T.salenLuego.length} están vendidas pero sin patentar, así que no se descuentan todavía.` : ""}</p></div></div>
+      <div class="a ${T.inmovil.length ? "w" : "n"}"><i></i><div><b>${T.inmovil.length} inmovilizadas, ocupando techo sin poder venderse</b>
+        <p>Unidades que el cliente nunca retiró, por causas judiciales y casos parecidos. Están bajo llave y bajo techo: no entran en el stock disponible, pero el lugar que ocupan es real y no se libera. Son ${T.inmovil.length} de los ${T.cupos} lugares, inmovilizados por tiempo indefinido.</p></div></div>
+      <div class="a n"><i></i><div><b>${T.salon.length + T.demo.length} en el predio sin ocupar techo</b>
+        <p>${T.salon.length} en el salón de ventas, adentro del edificio${T.demo.length ? `, y ${T.demo.length} ${T.demo.length > 1 ? "unidades demo, que se prestan" : "unidad demo, que se presta"} a los clientes para probar` : ""}. Están disponibles para la venta, pero no compiten por los ${T.cupos} lugares. Contando todo —las del depósito, el salón y las inmovilizadas— hay ${T.fisicas} unidades en el predio.</p></div></div>
       <div class="a ${T.sinAlta.length ? "w" : "n"}"><i></i><div><b>${T.sinAlta.length} por llegar de fábrica</b>
-        <p>Todavía sin alta en SIAC: cuando se les da el alta aparecen en Las Lomas.</p></div></div>
-      <div class="a ${T.enSalta.length ? "w" : "n"}"><i></i><div><b>${T.enSalta.length} para traer de Salta</b>
-        <p>Facturadas, con venta de Jujuy, paradas en depósitos o sucursales de Salta. Hay que pedirle el traslado a logística.${T.salaLuego.length ? ` Hay ${T.salaLuego.length} más de Jujuy allá sin vender, que no entran en la cuenta porque no tienen fecha.` : ""}</p></div></div>
+        <p>Todavía sin alta en SIAC: cuando se les da el alta aparecen en Las Lomas.${T.conFecha.length ? ` ${T.conFecha.length} ya tienen fecha estimada de llegada${T.proxima ? `, la primera el ${fdm(T.proxima)}` : ""} — esas son las que hay que mirar si se viene granizo.` : ""}</p></div></div>
+      <div class="a ${T.pedidas.length ? "w" : "n"}"><i></i><div><b>${T.pedidas.length} pedida${T.pedidas.length === 1 ? "" : "s"} a Salta<span style="font-weight:400;color:var(--mute)">${T.porPedir.length ? ` · ${T.porPedir.length} más para pedir` : ""}</span></b>
+        <p>${T.pedidas.length ? `Marcadas “TRAER DE SALTA” en la hoja REC.: el traslado ya está pedido, así que entran en la proyección.` : "Ninguna pedida todavía."}${T.porPedir.length ? ` Hay ${T.porPedir.length} más facturadas con venta de Jujuy paradas allá, que todavía hay que pedirle a logística.${T.saltaConDominio.length ? ` De esas, ${T.saltaConDominio.length} ya ${T.saltaConDominio.length > 1 ? "tienen" : "tiene"} dominio: ${T.saltaConDominio.length > 1 ? "van" : "va"} primero.` : ""} Sin pedido no tienen fecha, así que no suman a la proyección.` : ""}${T.salaLuego.length ? ` Y ${T.salaLuego.length} de Jujuy allá sin vender.` : ""}</p></div></div>
     </div>
-    <p class="sub" style="margin-top:10px">${T.ocupan.length} hoy + ${T.entran} por entrar − ${T.porSalir.length} por salir = <b>${T.proy}</b>. Lo que pasa de ${T.cupos} va al fondo del predio, que no está bajo techo.${CUPOS_MOTOS?` Quedan ${CUPOS_MOTOS} lugares más prestados para las motos del personal: se pueden pedir si se viene una granizada.`:""}</p>
+    <p class="sub" style="margin-top:10px">${T.ocupan.length} a la venta + ${T.inmovil.length} inmovilizadas = ${T.bajoTecho} bajo techo hoy. Más ${T.entran} por entrar (${T.sinAlta.length} de fábrica y ${T.pedidas.length} de Salta) − ${T.porSalir.length} por salir = <b>${T.proy}</b>. Lo que pasa de ${T.cupos} va al fondo del predio, que no está bajo techo.${CUPOS_MOTOS?` Quedan ${CUPOS_MOTOS} lugares más prestados para las motos del personal: se pueden pedir si se viene una granizada.`:""}</p>
   </div>`;
 }
 
@@ -1141,7 +1393,7 @@ MOD.vendedores={ic:"👥",t:"Vendedores",d:"Cantidad y calidad de la entrega por
 }};
 
 /* ═══ NAVEGACIÓN Y FILTROS ═══ */
-let actual="resumen";
+let actual="tablero";
 // Orden del menú: primero lo del día a día, al final lo de análisis.
 
 
@@ -1579,35 +1831,50 @@ ${JS}
 </body></html>`;
 }
 
+/* El informe sale SIEMPRE con el mes cerrado, igual que el cierre del tablero de
+   Javier. El portal abre en el mes de la última entrega, así que el 2 de octubre
+   los filtros muestran octubre: un mes a medias no se le manda a dirección. Si
+   arriba está elegido el mes en curso, el informe retrocede al anterior. Elegir
+   un mes más viejo sí vale, porque ya está cerrado. */
+function mesInforme(){
+  const h = new Date(), mh = h.getMonth() + 1, ah = h.getFullYear();
+  let m = F.mes, a = F.anio;
+  if (a > ah || (a === ah && m >= mh)) { m = mh - 1; a = ah; if (m === 0) { m = 12; a = ah - 1; } }
+  return { m: m, a: a };
+}
+
 function bajarInforme(){
-  const b = new Blob([informeHTML(F.mes, F.anio)], {type:"text/html;charset=utf-8"});
+  const I = mesInforme();
+  const b = new Blob([informeHTML(I.m, I.a)], {type:"text/html;charset=utf-8"});
   const u = URL.createObjectURL(b), el = document.createElement("a");
-  el.href = u; el.download = `Informe de Gestion PDI ${MESES[F.mes-1]} ${F.anio} - Autosol Jujuy.html`;
+  el.href = u; el.download = `Informe de Gestion PDI ${MESES[I.m-1]} ${I.a} - Autosol Jujuy.html`;
   document.body.appendChild(el); el.click(); el.remove();
   setTimeout(() => URL.revokeObjectURL(u), 8000);
 }
 function verInforme(){
-  const b = new Blob([informeHTML(F.mes, F.anio)], {type:"text/html;charset=utf-8"});
+  const I = mesInforme();
+  const b = new Blob([informeHTML(I.m, I.a)], {type:"text/html;charset=utf-8"});
   const u = URL.createObjectURL(b);
   if (!window.open(u, "_blank")) alert("El navegador bloqueó la ventana nueva. Usá el botón de descargar.");
   setTimeout(() => URL.revokeObjectURL(u), 30000);
 }
 
 MOD.informe={ic:"📄",t:"Informe",d:"El informe mensual de gestión, listo para mandar",r(S){
-  const T=textosRRHH(), D=datosInforme(F.mes,F.anio);
+  const I=mesInforme(), D=datosInforme(I.m,I.a), enCurso=(I.m!==F.mes||I.a!==F.anio);
+  const T=textosRRHH();
   const falta=[];
   if(!SEG.length) falta.push("el recupero del seguro — se manda con la macro <b>EnviarSeguro</b> del Excel");
   if(RRHH_CAMPOS.every(([k])=>!T[k])) falta.push("las novedades de gestión y RRHH — se escriben acá abajo");
   return `
   <div class="card" style="border-left:4px solid var(--acc);margin-bottom:14px">
-    <h3>Informe de ${MESES[F.mes-1].toLowerCase()} ${F.anio} <span>para mandarle a Jorge</span></h3>
+    <h3>Informe de ${MESES[I.m-1].toLowerCase()} ${I.a} <span>para mandarle a Jorge</span></h3>
     <p class="sub" style="margin-bottom:12px">Baja un archivo que se abre solo en cualquier computadora, sin internet, con el mismo formato de siempre: resumen ejecutivo, entregas, contratos, accesorios, stock, recepción, recupero y gestión. Los números salen del tablero.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn pri" onclick="bajarInforme()">📄 Descargar el informe</button>
       <button class="btn" onclick="verInforme()">👁 Verlo antes</button>
     </div>
     ${falta.length?`<p class="sub" style="margin:12px 0 0;color:var(--warn)"><b>Le falta:</b> ${falta.join(" · ")}.</p>`:""}
-    <p class="sub" style="margin:10px 0 0">El mes que se informa es el que está elegido arriba, en los filtros. Hoy: <b>${MESES[F.mes-1]} ${F.anio}</b>.</p>
+    <p class="sub" style="margin:10px 0 0">El informe sale siempre con el <b>mes cerrado</b>: ${MESES[I.m-1]} ${I.a}, del 1 al último día.${enCurso?` Arriba está elegido ${MESES[F.mes-1]} ${F.anio}, que todavía está en curso: un mes a medias no se manda. Para informar un mes anterior, elegilo en los filtros.`:" Para informar otro mes, elegilo en los filtros."}</p>
   </div>
 
   <div class="card" style="margin-bottom:14px"><h3>Lo que va a decir <span>un vistazo antes de bajarlo</span></h3>
@@ -1748,7 +2015,368 @@ MOD.preparacion={ic:"🔧",t:"Preparación",d:"Lo que trabajó el sector: armado
     </div>
   </div>`;
 }};
-const ORDEN=["resumen","preparacion","entregas","envios","contratos","accesorios","recepciones","stock","unidades","vendedores","rotacion","informe"];
+
+/* ═══ TABLERO DE GESTIÓN ═══════════════════════════════════════════════════
+   La pantalla única del sector: lo que entró, lo que se preparó, lo que salió,
+   cómo está el depósito y qué hay que atender hoy. No calcula nada nuevo por
+   su cuenta: usa las mismas cuentas que los módulos (sets, preparacion, techo),
+   así un número de acá siempre coincide con el del módulo al que lleva.
+
+   Todo se puede tocar: cada tarjeta, barra o alerta abre el módulo con el
+   detalle, y tocar un mes en los gráficos cambia el período de todo el portal.
+
+   Para cambiar cada cuánto se vuelve a leer solo, tocá REFRESCO_MIN.
+   ──────────────────────────────────────────────────────────────────────── */
+const REFRESCO_MIN = 5;
+let ULT_LECTURA = null;
+
+/* Colores de las series (validados para fondo oscuro y daltonismo) y de estado */
+const TB = {az:"#3987e5", nj:"#d95926", ag:"#12a594", vi:"#8e6ae0", gr:"#8fa3bf",
+            ok:"#2fbd7e", warn:"#fab219", bad:"#ff6b6b",
+            tx:"#f2f7ff", tx2:"#cbd9ef", mu:"#a3b6d2", ln:"#24395c", sp:"#1a2b45", card:"#10203a"};
+const TB_SERIE = [TB.az, TB.nj, TB.ag, TB.vi];
+
+const tbSvg = d => `<svg viewBox="0 0 20 20" aria-hidden="true">${d}</svg>`;
+const TB_ICO = {
+  camion: tbSvg('<path d="M2 6h10v8H2zM12 9h4l2 3v2h-6z"/><circle cx="6" cy="15.5" r="1.5"/><circle cx="15" cy="15.5" r="1.5"/>'),
+  llave:  tbSvg('<path d="M13.5 3.5a4 4 0 0 0-4.9 5.2L3 14.3 5.7 17l5.6-5.6a4 4 0 0 0 5.2-4.9l-2.4 2.4-2.1-.6-.6-2.1z"/>'),
+  auto:   tbSvg('<path d="M3 12l1.6-4.5A2 2 0 0 1 6.5 6h7a2 2 0 0 1 1.9 1.5L17 12v4h-2v-1.5H5V16H3z"/><path d="M3.5 12h13"/>'),
+  patio:  tbSvg('<rect x="3" y="3" width="14" height="14" rx="3"/><path d="M8 14V6h3a2.5 2.5 0 0 1 0 5H8"/>'),
+  reloj:  tbSvg('<circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/>'),
+  pesos:  tbSvg('<circle cx="10" cy="10" r="7"/><path d="M12.2 7.6c-.4-.8-1.2-1.2-2.2-1.2-1.3 0-2.2.7-2.2 1.8 0 2.4 4.6 1 4.6 3.6 0 1.1-1 1.9-2.4 1.9-1.1 0-2-.5-2.4-1.4M10 5v10"/>')
+};
+
+/* Período anterior comparable: el mes anterior (o el año anterior si se mira el
+   acumulado). Si el período elegido está en curso, el anterior se corta al mismo
+   día, para no comparar medio mes contra un mes entero. */
+function tbPrevio(){
+  const enCurso = F.anio === +ULT.slice(0,4) && (F.modo === "anio" || F.mes === +ULT.slice(5,7));
+  if (F.modo === "anio")
+    return {txt: "vs. " + (F.anio-1) + (enCurso ? " al mismo día" : ""),
+            f: d => !!d && +d.slice(0,4) === F.anio-1 && (!enCurso || d.slice(5) <= ULT.slice(5))};
+  let m = F.mes - 1, a = F.anio; if (m < 1) { m = 12; a-- }
+  const dia = ULT.slice(8,10);
+  return {txt: "vs. " + MESES[m-1].slice(0,3).toLowerCase() + "." + (enCurso ? " al mismo día" : ""),
+          f: d => !!d && +d.slice(0,4) === a && +d.slice(5,7) === m && (!enCurso || d.slice(8,10) <= dia)};
+}
+function tbDelta(a, b, txt){
+  if (!b) return `<span><small>sin dato del período anterior</small></span>`;
+  const p = Math.round((a-b)/b*100);
+  return `<span><span class="tb-dl ${p>0?"up":p<0?"dn":""}">${p>0?"▲":p<0?"▼":"="} ${Math.abs(p)}%</span><small>${txt}</small></span>`;
+}
+function tbSplit(partes){
+  const tot = partes.reduce((s,p) => s + p[1], 0);
+  if (!tot) return "";
+  return `<div class="tb-sp">${partes.map(p => `<i style="width:${p[1]/tot*100}%;background:${p[2]}"></i>`).join("")}</div>
+    <div class="tb-sl">${partes.map(p => `<span style="--c:${p[2]}">${p[0]} ${fmt(p[1])}</span>`).join("")}</div>`;
+}
+function tbTile(o){
+  return `<button class="tb-t" style="--c:${o.col}" onclick="ir('${o.go}')" title="Abrir ${MOD[o.go].t}">
+    <div class="tb-th"><div class="tb-ic">${TB_ICO[o.ic]}</div><div class="tb-tl">${o.t}</div></div>
+    <div class="tb-n"><b>${o.n}</b>${o.dl||""}</div>
+    ${o.extra||""}
+    <div class="tb-pie">${o.pie||""}</div>
+  </button>`;
+}
+/* Ejes y base de los gráficos del tablero: siempre con la paleta oscura */
+function tbBase(){ return {
+  textStyle:{fontFamily:"var(--body)",color:TB.mu}, animationDuration:400,
+  tooltip:{trigger:"axis",axisPointer:{type:"shadow"},backgroundColor:"#0c1a2e",borderColor:TB.ln,
+    textStyle:{color:TB.tx,fontSize:12},extraCssText:"box-shadow:0 8px 24px rgba(0,0,0,.4);border-radius:8px"} }}
+const tbEjeMes = () => ({type:"category",data:MESES.map(m=>m.slice(0,3)),
+  axisLine:{lineStyle:{color:TB.ln}},axisTick:{show:false},
+  axisLabel:{color:(v,i)=>F.modo==="mes"&&i===F.mes-1?TB.tx:TB.mu,fontSize:11,fontWeight:500}});
+const tbEjeVal = (extra={}) => ({type:"value",splitLine:{lineStyle:{color:TB.sp}},axisLine:{show:false},
+  axisTick:{show:false},axisLabel:{color:TB.mu,fontSize:11},...extra});
+const tbSel = i => F.modo === "anio" || i === F.mes - 1;   // el mes elegido va a pleno, el resto atenuado
+/* Tocar un mes en cualquier gráfico cambia el período de todo el portal */
+function tbMes(nombre){
+  const i = MESES.findIndex(m => m.slice(0,3) === nombre); if (i < 0) return;
+  F.modo = "mes"; F.mes = i + 1;
+  document.querySelectorAll("#modo button").forEach(b => b.classList.toggle("on", b.dataset.m === "mes"));
+  $("fMes").style.display = ""; marcarBotones(); render();
+}
+function tbHB(filas, go){
+  const mx = Math.max(1, ...filas.map(f => f[1])), tot = filas.reduce((s,f) => s + f[1], 0);
+  return `<div class="tb-hb">${filas.map(f => `<button style="--c:${f[2]}" onclick="ir('${f[3]||go}')" title="${esc(f[0])}: ${f[1]} · ver detalle">
+    <span>${esc(f[0])}</span><span class="tr"><i style="width:${f[1]/mx*100}%"></i></span><b>${fmt(f[1])}</b><em>${tot?Math.round(f[1]/tot*100):0}%</em></button>`).join("")}</div>`;
+}
+
+MOD.tablero={ic:"📊",t:"Tablero",d:"Todo el sector en una pantalla · tocá cualquier número para ver el detalle",r(S){
+  const P = preparacion(), T = techo(), PV = tbPrevio();
+  const esMes = F.modo === "mes";
+  const B = base(S.e), conAcc = S.e.filter(r => r.acc).length;
+  const pesosAc = S.ap.reduce((s,r) => s + r.t, 0);
+  const meses = esMes ? 1 : (F.anio === +ULT.slice(0,4) ? +ULT.slice(5,7) : 12);
+  const obj = (DATA.objAcc || 0) * meses, cumpl = obj ? Math.round(pesosAc/obj*100) : 0;
+  const tAcc = tasa(conAcc, B), tCm = tasa(S.cm.length, B);
+  const delAnio = d => !!d && +d.slice(0,4) === F.anio;
+
+  /* Lo mismo, en el período anterior */
+  const recA = REC.filter(r => PV.f(r.f) && okMod(r)).length;
+  const armA = REC.filter(r => PV.f(r.fArm)).length;
+  const entA = ENT.filter(r => PV.f(r.f) && okEnt(r)).length;
+  const apA  = ACP.filter(r => PV.f(r.f)).reduce((s,r) => s + r.t, 0);
+  const antA = REC.filter(r => PV.f(r.fEnt) && r.fArm).map(r => dif(r.fArm, r.fEnt)).filter(d => d !== null && d >= 0);
+
+  /* La cola de trabajo de hoy: unidades ya vendidas que siguen en Las Lomas.
+     Sin armar = hay que prepararlas. Armadas = están esperando la entrega. */
+  const armInt = new Set(REC.filter(r => r.fArm && r.int).map(r => r.int));
+  const recInt = new Set(REC.filter(r => r.int).map(r => r.int));
+  const vendidas = T.ocupan.filter(u => u.fact);
+  const k = u => String(u.int).trim();
+  const sinArmar = vendidas.filter(u => recInt.has(k(u)) && !armInt.has(k(u)));
+  const listasEsp = vendidas.filter(u => armInt.has(k(u)));
+
+  /* Stock físico (hoja BOX) */
+  const st = S.st, stOk = st.filter(r => r.op === "OK").length, stNov = st.length - stOk;
+  const ant = [["0 a 30 días", st.filter(r => r.patio !== null && r.patio <= 30).length, TB.ok],
+               ["31 a 60 días", st.filter(r => r.patio > 30 && r.patio <= 60).length, TB.az],
+               ["61 a 90 días", st.filter(r => r.patio > 60 && r.patio <= 90).length, TB.warn],
+               ["Más de 90 días", st.filter(r => r.patio > 90).length, TB.bad]];
+  const viejas = ant[3][1], sinCtrl = st.filter(r => !r.ctrl).length;
+
+  /* Series del año, mes a mes */
+  const m12 = () => new Array(12).fill(0);
+  const sRec = m12(), sArm = m12(), sEnt = m12();
+  REC.forEach(r => {
+    if (delAnio(r.f) && okMod(r)) sRec[+r.f.slice(5,7)-1]++;
+    if (delAnio(r.fArm)) sArm[+r.fArm.slice(5,7)-1]++;
+  });
+  ENT.filter(okEnt).forEach(r => { if (delAnio(r.f)) sEnt[+r.f.slice(5,7)-1]++ });
+  const barra = (nombre, datos, color) => ({name:nombre, type:"bar", barMaxWidth:14, barGap:"12%",
+    data: datos.map((v,i) => ({value:v, itemStyle:{color, opacity: tbSel(i) ? 1 : .4, borderRadius:[3,3,0,0]}})), cursor:"pointer"});
+  const gMes = chart({...tbBase(),
+    grid:{left:4,right:8,top:12,bottom:4,containLabel:true},
+    xAxis:tbEjeMes(), yAxis:tbEjeVal({minInterval:1}),
+    series:[barra("Recibidas",sRec,TB.az), barra("Preparadas",sArm,TB.ag), barra("Entregadas",sEnt,TB.nj)]
+  }, 230, tbMes);
+
+  /* Tasas: las dos van en porcentaje, así que comparten un solo eje */
+  const tA = serieMensualTasa("acc"), tC = serieMensualTasa("cm");
+  const linea = (nombre, datos, color) => ({name:nombre, type:"line", data:datos, connectNulls:true, symbolSize:8,
+    lineStyle:{width:2,color}, itemStyle:{color,borderColor:TB.card,borderWidth:2}, cursor:"pointer",
+    label:{show:true,color:TB.tx2,fontSize:10,formatter:p => (F.modo==="mes" && p.dataIndex===F.mes-1) ? p.value+"%" : ""}});
+  const gTasa = chart({...tbBase(),
+    tooltip:{...tbBase().tooltip,axisPointer:{type:"line",lineStyle:{color:TB.ln}},
+      formatter:p => p[0].name + "<br>" + p.map(x => `${x.marker}${x.seriesName}: <b>${x.value==null?"—":x.value+"%"}</b>`).join("<br>")},
+    grid:{left:4,right:58,top:16,bottom:4,containLabel:true},
+    xAxis:{...tbEjeMes(),boundaryGap:false}, yAxis:tbEjeVal({axisLabel:{color:TB.mu,fontSize:11,formatter:"{value}%"}}),
+    series:[linea("Tasa de accesorios",tA,TB.az),
+      {...linea("Tasa de contratos",tC,TB.nj),
+        markLine:{silent:true,symbol:"none",data:[{yAxis:30}],lineStyle:{color:TB.mu,type:"dashed",width:1},
+          label:{formatter:"meta 30%",color:TB.mu,fontSize:10,position:"end"}}}]
+  }, 230, tbMes);
+
+  /* Destino de lo preparado */
+  const dest = orden(P.porDestino, 4), resto = P.arm.length - dest.reduce((s,x) => s + x[1], 0);
+  const destF = dest.map((x,i) => [x[0], x[1], TB_SERIE[i]]); if (resto > 0) destF.push(["Otros", resto, TB.gr]);
+  const gDest = destF.length ? chart({...tbBase(),
+    tooltip:{...tbBase().tooltip,trigger:"item",formatter:p => `${p.name}<br><b>${fmt(p.value)}</b> unidades · ${p.percent}%`},
+    series:[{type:"pie",radius:["58%","86%"],center:["50%","50%"],label:{show:false},cursor:"pointer",
+      itemStyle:{borderColor:TB.card,borderWidth:2},
+      data:destF.map(x => ({name:x[0],value:x[1],itemStyle:{color:x[2]}}))}],
+    graphic:{type:"text",left:"center",top:"center",style:{text:String(P.arm.length),fontSize:30,fontWeight:700,fill:TB.tx,fontFamily:"var(--disp)"}}
+  }, 170, () => ir("preparacion")) : "";
+
+  /* Productividad: armados y colocaciones van separados, porque el que arma no
+     siempre es el que coloca. */
+  const pers = {};
+  Object.entries(P.porPersona).forEach(([q,n]) => { const key = tit(q.trim()); (pers[key] || (pers[key] = [0,0]))[0] += n });
+  Object.entries(P.porTecnico).forEach(([q,n]) => { const key = tit(q.trim()); (pers[key] || (pers[key] = [0,0]))[1] += n });
+  const pl = Object.entries(pers).sort((a,b) => (b[1][0]+b[1][1]) - (a[1][0]+a[1][1])).slice(0,8).reverse();
+  const serieH = (nombre, idx, color) => ({name:nombre, type:"bar", barMaxWidth:12, barGap:"15%",
+    data:pl.map(x => x[1][idx]), itemStyle:{color,borderRadius:[0,3,3,0]},
+    label:{show:true,position:"right",color:TB.tx2,fontSize:11,formatter:p => p.value || ""}});
+  const gPers = pl.length ? chart({...tbBase(),
+    grid:{left:4,right:28,top:4,bottom:4,containLabel:true},
+    xAxis:{type:"value",splitLine:{show:false},axisLabel:{show:false}},
+    yAxis:{type:"category",data:pl.map(x => x[0]),axisLine:{lineStyle:{color:TB.ln}},axisTick:{show:false},
+      axisLabel:{color:TB.tx2,fontSize:12,width:96,overflow:"truncate"}},
+    series:[serieH("Armados",0,TB.ag), serieH("Colocaciones",1,TB.vi)]
+  }, Math.max(150, pl.length*42+16), () => ir("preparacion")) : '<div class="vacio">Sin armados ni colocaciones cargados en el período.</div>';
+
+  /* Techo */
+  const pctT = Math.round(T.bajoTecho / T.cupos * 100);
+  const rojo = T.sobran > 0, amar = !rojo && (T.sobranBruto > 0 || T.libres <= 5);
+  const colT = rojo ? TB.bad : amar ? TB.warn : TB.ok;
+  const circ = 2 * Math.PI * 44;
+
+  /* Alertas: solo las que tienen algo. Cada una lleva al módulo donde se resuelve. */
+  const trabadas = T.ocupan.filter(u => !u.cert && !u.pago).length;
+  const tibios = JAV.filter(x => x.comprado === 0 && /recordatorio|otro momento|no lo necesito|proximo mes|cierre de tarjeta|espera/i.test(x.motivo)).length;
+  const AL = [
+    [0, rojo ? T.sobran : 0, "Unidades que quedarían sin techo", "Pedir los lugares de las motos / avisar", "resumen"],
+    [0, viejas, "Unidades con más de 90 días en stock", "Definir destino o priorizar", "stock"],
+    [0, P.sinMover.length, "Entregadas con el check list sin subir al legajo", "Subir los papeles al legajo", "preparacion"],
+    [1, !rojo && amar ? Math.max(T.libres, 0) : 0, "Lugares libres bajo techo: al límite", "Seguir lo que está por llegar", "resumen"],
+    [1, stNov, "Unidades en stock con novedad", "Seguimiento con taller", "stock"],
+    [1, sinArmar.length, "Vendidas que todavía no están armadas", "Programar el armado", "unidades"],
+    [1, trabadas, "En Las Lomas sin certificado ni pago", "No deben salir del concesionario", "unidades"],
+    [1, sinCtrl, "Unidades sin plan de control", "Cargar la fecha ZP", "stock"],
+    [2, P.aRevisar.length, "Entregas con la fecha de armado a revisar", "Corregir la carga en REC.", "preparacion"],
+    [2, VIAJE.length, "Unidades en viaje", "Prever lugar y recepción", "recepciones"],
+    [2, tibios, "Clientes para volver a llamar por contrato", "Pasar la lista a Javier", "contratos"]
+  ].filter(a => a[1] > 0 && MOD[a[4]]).sort((a,b) => a[0] - b[0]);
+  const NIV = [["Crítica", TB.bad], ["Atención", TB.warn], ["Info", TB.az]];
+  const nAl = n => AL.filter(a => a[0] === n).length;
+
+  CSV = () => [["Tablero", perTxt()],
+    ["Unidades recibidas", S.rc.length], ["Unidades preparadas", P.arm.length], ["Entregas", S.e.length],
+    ["Stock físico hoy", st.length], ["Antelación del armado (días)", P.antel.length ? P.antelProm : ""],
+    ["Accesorios facturados $", Math.round(pesosAc)], ["Tasa de accesorios %", tAcc], ["Tasa de contratos %", tCm],
+    ["Ocupación bajo techo", `${T.bajoTecho} de ${T.cupos}`], [],
+    ["Alertas"], ...AL.map(a => [NIV[a[0]][0], a[2], a[1], a[3]])];
+
+  const hora = ULT_LECTURA ? ULT_LECTURA.toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"}) : "";
+  const listasAT = P.entregadas.length - P.aRevisar.length;
+
+  return `<div class="tb">
+  <div class="tb-top">
+    <div><b>Pre-Entregas · ${perTxt()}</b><span>Datos al ${fdia(ULT)} · generado ${esc(DATA.generado||"")}</span></div>
+    <div class="tb-live" title="El tablero vuelve a leer los datos solo, sin tocar nada"><i></i>En vivo · se actualiza cada ${REFRESCO_MIN} min${hora ? ` · última lectura ${hora}` : ""}</div>
+  </div>
+
+  <div class="tb-k">
+    ${tbTile({go:"recepciones", ic:"camion", col:TB.az, t:"Unidades recibidas", n:fmt(S.rc.length), dl:tbDelta(S.rc.length, recA, PV.txt),
+      extra:tbSplit([["De fábrica", S.rc.filter(x => x.origen === "De fábrica").length, TB.az], ["De Salta", S.rc.filter(x => x.origen === "De Salta").length, TB.nj]]),
+      pie: esMes ? `Acumulado ${F.anio}: <b>${fmt(REC.filter(r => delAnio(r.f) && okMod(r)).length)}</b>` : `${fmt(VIAJE.length)} en viaje ahora`})}
+    ${tbTile({go:"preparacion", ic:"llave", col:TB.ag, t:"Unidades preparadas", n:fmt(P.arm.length), dl:tbDelta(P.arm.length, armA, PV.txt),
+      extra:tbSplit([["Armados", P.arm.length, TB.ag], ["Colocaciones", P.col.length, TB.vi]]),
+      pie: esMes ? `Acumulado ${F.anio}: <b>${fmt(REC.filter(r => delAnio(r.fArm)).length)}</b>` : `${fmt(P.trabajos)} trabajos del sector`})}
+    ${tbTile({go:"entregas", ic:"auto", col:TB.nj, t:"Entregas", n:fmt(S.e.length), dl:tbDelta(S.e.length, entA, PV.txt),
+      extra:tbSplit([["Base de tasas", B, TB.nj], ["Mayorista y otros", S.e.length - B, TB.gr]]),
+      pie: esMes ? `Acumulado ${F.anio}: <b>${fmt(ENT.filter(r => delAnio(r.f) && okEnt(r)).length)}</b>` : `${fmt(S.sal.length)} preparadas para salón`})}
+    ${tbTile({go:"stock", ic:"patio", col:TB.vi, t:"Stock físico hoy", n:fmt(st.length),
+      dl:`<span><small>foto de hoy, no depende del mes</small></span>`,
+      extra:tbSplit([["OK", stOk, TB.ok], ["Con novedad", stNov, TB.warn]]),
+      pie:`Promedio en patio: <b>${prom(st.map(r => r.patio).filter(x => x !== null))} días</b>`})}
+    ${tbTile({go:"preparacion", ic:"reloj", col:TB.warn, t:"Antelación del armado", n:P.antel.length ? P.antelProm + " d" : "—",
+      dl:`<span><small>${antA.length ? `${PV.txt}: ${prom(antA)} d` : "días antes de la entrega"}</small></span>`,
+      extra: P.entregadas.length ? `<div class="tb-sp"><i style="width:${listasAT/P.entregadas.length*100}%;background:${TB.ok}"></i><i style="width:${P.aRevisar.length/P.entregadas.length*100}%;background:${TB.warn}"></i></div>
+        <div class="tb-sl"><span style="--c:${TB.ok}">Listas a tiempo ${listasAT}</span><span style="--c:${TB.warn}">A revisar ${P.aRevisar.length}</span></div>` : "",
+      pie: P.entregadas.length ? `<b>${listasAT} de ${P.entregadas.length}</b> entregas con la unidad lista antes` : "Sin entregas en el período"})}
+    ${tbTile({go:"accesorios", ic:"pesos", col:TB.ok, t:"Accesorios facturados", n:mill(pesosAc), dl:tbDelta(pesosAc, apA, PV.txt),
+      extra: obj ? `<div class="tb-sp"><i style="width:${Math.min(cumpl,100)}%;background:${cumpl>=100?TB.ok:cumpl>=80?TB.warn:TB.bad}"></i></div>
+        <div class="tb-sl"><span style="--c:${cumpl>=100?TB.ok:cumpl>=80?TB.warn:TB.bad}">${cumpl}% del objetivo</span><span style="--c:transparent">${mill(obj)}</span></div>` : "",
+      pie: obj ? (cumpl >= 100 ? "Objetivo alcanzado" : `Faltan <b>${mill(Math.max(0, obj - pesosAc))}</b>`) : `${fmt(S.ap.length)} OR facturadas`})}
+  </div>
+
+  <div class="tb-g r2">
+    <div class="tb-c">
+      <h4>Flujo de unidades <span>${perTxt()}</span></h4>
+      <div class="tb-fl">
+        <button style="--c:${TB.az}" onclick="ir('recepciones')"><small>Recibidas</small><b>${fmt(S.rc.length)}</b></button>
+        <button style="--c:${TB.ag}" onclick="ir('preparacion')"><small>Preparadas</small><b>${fmt(P.arm.length)}</b></button>
+        <button style="--c:${TB.nj}" onclick="ir('entregas')"><small>Entregadas</small><b>${fmt(S.e.length)}</b></button>
+      </div>
+      <div class="tb-sub">Pendiente hoy</div>
+      <div class="tb-pe">
+        <button onclick="ir('recepciones')"><b>${fmt(VIAJE.length)}</b><small>en viaje, por recibir</small></button>
+        <button onclick="ir('unidades')"><b>${fmt(sinArmar.length)}</b><small>vendidas sin armar</small></button>
+        <button onclick="ir('unidades')"><b>${fmt(listasEsp.length)}</b><small>armadas esperando entrega</small></button>
+      </div>
+      <p class="tb-nota">Lo pendiente es la foto de hoy en Las Lomas: unidades facturadas que todavía no se entregaron.</p>
+    </div>
+    <div class="tb-c">
+      <h4>Recibidas, preparadas y entregadas <span>${F.anio} · tocá un mes para verlo</span></h4>
+      <div class="tb-ley"><span style="--c:${TB.az}">Recibidas</span><span style="--c:${TB.ag}">Preparadas</span><span style="--c:${TB.nj}">Entregadas</span></div>
+      ${gMes}
+    </div>
+    <div class="tb-c">
+      <h4>Destino de lo preparado <span>${perTxt()}</span></h4>
+      ${destF.length ? `<div class="tb-dn">${gDest}<div class="tb-dl2">${destF.map(x => `<div style="--c:${x[2]}"><i></i><span title="${esc(x[0])}">${esc(x[0])}</span><b>${fmt(x[1])}</b></div>`).join("")}</div></div>` : '<div class="vacio">Sin armados cargados en el período.</div>'}
+      <p class="tb-nota">Mayorista, sucursal Salta y salón también llevan preparación, aunque no sean entregas a cliente.</p>
+    </div>
+  </div>
+
+  <div class="tb-g r3">
+    <div class="tb-c">
+      <h4>Techo de Las Lomas <span>${T.cupos} lugares</span></h4>
+      <div class="tb-te">
+        <button class="tb-aro" onclick="ir('resumen')" title="Ver la cuenta completa del techo">
+          <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="${TB.sp}" stroke-width="10"/>
+            <circle cx="50" cy="50" r="44" fill="none" stroke="${colT}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${Math.min(pctT,100)/100*circ} ${circ}"/></svg>
+          <div><b>${pctT}%</b><small>ocupado</small></div>
+        </button>
+        <div class="tb-tl2">
+          <div><span>Ocupan techo hoy</span><b>${T.bajoTecho}</b></div>
+          <div><span>Por entrar</span><b>+${T.entran}</b></div>
+          <div><span>Por salir (patentadas)</span><b>−${T.porSalir.length}</b></div>
+          <div><span>Proyección</span><b>${T.proy}</b></div>
+        </div>
+      </div>
+      <div class="tb-est" style="--c:${colT}"><i></i>${rojo ? `Nos pasamos por ${T.sobran}: quedarían sin cubrir` : amar ? "Al límite: entra justo" : `Entra todo: quedan ${Math.max(T.cupos - T.proy, 0)} lugares`}</div>
+    </div>
+    <div class="tb-c">
+      <h4>Antigüedad del stock <span>días en patio</span></h4>
+      ${st.length ? tbHB(ant, "stock") : '<div class="vacio">Sin unidades en patio.</div>'}
+    </div>
+    <div class="tb-c">
+      <h4>Estado del stock <span>hoy</span></h4>
+      <div class="tb-sub">Condición de la unidad</div>
+      ${tbHB([["OK para entregar", stOk, TB.ok], ["Con novedad", stNov, TB.warn]], "stock")}
+      <div class="tb-sub">Situación comercial en Las Lomas</div>
+      ${tbHB([["Sin vender", T.ocupan.length - vendidas.length, TB.gr], ["Vendidas sin patentar", T.salenLuego.length, TB.az], ["Patentadas, por salir", T.porSalir.length, TB.ag], ["Inmovilizadas", T.inmovil.length, TB.ro || TB.gr]], "unidades")}
+    </div>
+    <div class="tb-c">
+      <h4>Accesorios y contratos <span>sobre ${fmt(B)} entregas base</span></h4>
+      <div class="tb-ac">
+        <button onclick="ir('accesorios')"><small>Tasa de accesorios</small><b>${tAcc}%</b><em>${conAcc} de ${B} entregas</em></button>
+        <button onclick="ir('accesorios')"><small>Ticket por OR</small><b>${S.ap.length ? mill(pesosAc/S.ap.length) : "—"}</b><em>${fmt(S.ap.length)} OR facturadas</em></button>
+        <button onclick="ir('contratos')"><small>Tasa de contratos</small><b>${tCm}%</b><em>meta 30%</em>
+          <div class="tb-pr" style="--c:${tCm>=30?TB.ok:tCm>=24?TB.warn:TB.bad}"><i style="width:${Math.min(tCm/30*100,100)}%"></i></div></button>
+        <button onclick="ir('contratos')"><small>Contratos vendidos</small><b>${fmt(S.cm.length)}</b><em>${tibios ? `${tibios} para volver a llamar` : "todos los canales"}</em></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tb-g r4">
+    <div class="tb-c">
+      <h4>Tasa de accesorios y de contratos <span>${F.anio} · tocá un mes</span></h4>
+      <div class="tb-ley"><span style="--c:${TB.az}">Accesorios</span><span style="--c:${TB.nj}">Contratos</span></div>
+      ${gTasa}
+    </div>
+    <div class="tb-c">
+      <h4>Alertas de gestión <span>foto de hoy</span></h4>
+      ${AL.length ? `<div class="tb-chips">${NIV.map((n,i) => nAl(i) ? `<span class="tb-chip" style="--c:${n[1]}">${nAl(i)} ${["crítica","de atención","informativa"][i]}${nAl(i)>1&&i!==1?"s":""}</span>` : "").join("")}</div>
+      <div class="tb-al">${AL.map(a => `<button style="--c:${NIV[a[0]][1]}" onclick="ir('${a[4]}')" title="Abrir ${MOD[a[4]].t}">
+        <span class="pr">${NIV[a[0]][0]}</span><span>${a[2]}</span><b>${fmt(a[1])}</b><em>${a[3]}</em></button>`).join("")}</div>`
+      : '<div class="tb-okk">Sin alertas: no hay nada pendiente de atención hoy.</div>'}
+    </div>
+    <div class="tb-c">
+      <h4>Trabajo por persona <span>${perTxt()}</span></h4>
+      <div class="tb-ley"><span style="--c:${TB.ag}">Armados</span><span style="--c:${TB.vi}">Colocaciones de accesorios</span></div>
+      ${gPers}
+    </div>
+  </div>
+</div>`;
+}};
+
+/* Lectura automática: cada REFRESCO_MIN minutos vuelve a pedir los datos sin
+   cortina de carga y sin mover los filtros. Si estás en el Tablero se redibuja
+   solo; en los demás módulos no toca la pantalla (para no pisar una búsqueda o
+   un texto a medio escribir) y los datos nuevos aparecen al cambiar de módulo. */
+async function refrescoSilencioso(){
+  if (document.hidden || !DATA) return;
+  const tk = localStorage.getItem(TOKEN_KEY); if (!tk) return;
+  if (!document.getElementById("loginOverlay").classList.contains("hidden")) return;
+  try {
+    const j = await pedirJSON(API_URL + "?accion=gestion&token=" + encodeURIComponent(tk) + "&t=" + Date.now());
+    if (!j.ok) { if (j.error === "SIN_AUTORIZACION") cerrarSesion(); return }
+    const f = {...F};
+    DATA = j.datos; prepararDatos(); Object.assign(F, f); ULT_LECTURA = new Date();
+    $("pie").innerHTML = `Datos al ${fdia(ULT)}<br>Generado ${DATA.generado}<br>Fuente: libro PABLO 2016`;
+    armarNav();
+    if (actual === "tablero") { const y = window.scrollY; render(); window.scrollTo(0, y) }
+  } catch (ex) { console.warn("[Gestión] No se pudo actualizar solo, se reintenta en el próximo ciclo:", ex) }
+}
+setInterval(refrescoSilencioso, REFRESCO_MIN * 60000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && ULT_LECTURA && Date.now() - ULT_LECTURA > REFRESCO_MIN * 60000) refrescoSilencioso();
+});
+
+const ORDEN=["tablero","resumen","preparacion","entregas","envios","contratos","accesorios","recepciones","stock","unidades","vendedores","rotacion","informe"];
 function armarNav(){
   const alertas=STK.filter(r=>r.patio>90||!r.ctrl).length;
   $("nav").innerHTML=ORDEN.filter(k=>MOD[k]).map(k=>[k,MOD[k]]).map(([k,m])=>`<button data-k="${k}" class="${k===actual?"on":""}" onclick="ir('${k}')"><span class="ic">${m.ic}</span>${m.t}${k==="stock"&&alertas?`<span class="bdg">${alertas}</span>`:""}</button>`).join("");
@@ -1836,12 +2464,13 @@ function mostrarCargando(si){
 async function cargar(refrescar){
   const tk=localStorage.getItem(TOKEN_KEY);
   if(!tk){mostrarLogin("");return}
+  document.getElementById("loginOverlay").classList.add("hidden");
   mostrarCargando(true);
   try{
     const j=await pedirJSON(API_URL+"?accion=gestion&token="+encodeURIComponent(tk)+(refrescar?"&refrescar=1":"")+"&t="+Date.now());
     if(!j.ok&&j.error==="SIN_AUTORIZACION"){cerrarSesion();return}
     if(!j.ok)throw new Error(j.error||"Error desconocido");
-    DATA=j.datos; prepararDatos(); init(); mostrarCargando(false);
+    DATA=j.datos; ULT_LECTURA=new Date(); prepararDatos(); init(); mostrarCargando(false);
   }catch(ex){
     console.error("[Gestión] Error al cargar:",ex);
     mostrarCargando(false);
