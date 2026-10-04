@@ -1938,7 +1938,11 @@ function preparacion(){
 
   const porDestino = {}, porPersona = {}, porTecnico = {};
   arm.forEach(r => {
-    const d = tit(r.tipo || canalPorInt[r.int] || "Sin cargar");
+    /* El TIPO DE VENTA no se escribe a mano: aparece cuando se carga la entrega en la
+       hoja ENTR. Mientras la unidad está armada y esperando al cliente, esa columna
+       está vacía. No es un dato que falte: es el estado normal de una unidad lista. */
+    const canal = r.tipo || canalPorInt[r.int];
+    const d = canal ? tit(canal) : "Preparada, sin entregar";
     porDestino[d] = (porDestino[d] || 0) + 1;
     const q = r.armadoPor || "Sin cargar";
     porPersona[q] = (porPersona[q] || 0) + 1;
