@@ -2084,10 +2084,19 @@ function tbPrevio(){
   return {txt: "vs. " + MESES[m-1].slice(0,3).toLowerCase() + "." + (enCurso ? " al mismo día" : ""),
           f: d => !!d && +d.slice(0,4) === a && +d.slice(5,7) === m && (!enCurso || d.slice(8,10) <= dia)};
 }
-function tbDelta(a, b, txt){
-  if (!b) return `<span><small>sin dato del período anterior</small></span>`;
-  const p = Math.round((a-b)/b*100);
-  return `<span><span class="tb-dl ${p>0?"up":p<0?"dn":""}">${p>0?"▲":p<0?"▼":"="} ${Math.abs(p)}%</span><small>${txt}</small></span>`;
+function tbDelta(a, b, txt, fmtAbs){
+  if (b === null || b === undefined || b === 0) return `<span><small>sin dato del período anterior</small></span>`;
+  const sube = a > b, baja = a < b;
+  /* Un porcentaje contra un número NEGATIVO no significa nada, y además sale con el
+     signo al revés porque la división cambia de signo: pasar de −$320 mil a +$3,8 M
+     se mostraba como "▼ 1290%", cuando en realidad se subió $4,1 M. Cuando el período
+     anterior es negativo —o el actual lo es— se muestra la diferencia en pesos, que
+     es lo único que se entiende. El porcentaje queda para los casos normales. */
+  const raro = b < 0 || a < 0;
+  const cuanto = raro && fmtAbs
+    ? fmtAbs(Math.abs(a - b)).replace("-", "")
+    : Math.abs(Math.round((a - b) / Math.abs(b) * 100)) + "%";
+  return `<span><span class="tb-dl ${sube?"up":baja?"dn":""}">${sube?"▲":baja?"▼":"="} ${cuanto}</span><small>${txt}</small></span>`;
 }
 function tbSplit(partes){
   const tot = partes.reduce((s,p) => s + p[1], 0);
@@ -2295,7 +2304,7 @@ MOD.tablero={ic:"📊",t:"Tablero",d:"Todo el sector en una pantalla · tocá cu
       pie: obj ? (cumpl >= 100 ? "Objetivo alcanzado" : `Faltan <b>${mill(Math.max(0, obj - pesosAc))}</b>`) : `${fmt(S.ap.length)} OR facturadas`})}
     ${tbTile({go:"informe", ic:"escudo", col:segCol, t:"Recupero del seguro",
       n: SEG.length ? mill(segMes) : "—",
-      dl: SEG.length ? tbDelta(segMes, segPrev, PV.txt) : `<span><small>falta correr EnviarSeguro en el Excel</small></span>`,
+      dl: SEG.length ? tbDelta(segMes, segPrev, PV.txt, mill) : `<span><small>falta correr EnviarSeguro en el Excel</small></span>`,
       extra: SEG.length ? tbSplit([["Reclamos del período", segPer.length, segCol]]) : "",
       pie: SEG.length ? `Acumulado ${F.anio}: <b>${mill(segAnio)}</b>` : "Sin datos cargados"})}
   </div>
