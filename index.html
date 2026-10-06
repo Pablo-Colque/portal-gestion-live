@@ -1504,6 +1504,25 @@ function datosInforme(m, a){
   const segAnio = SEG.filter(r => hastaMes(r.f)).reduce((s,r) => s + r.gan, 0);
   const segSerie = serie(SEG, r => r.f, r => r.gan);
   const mejorSeg = segSerie.reduce((mx,v,i) => v > segSerie[mx] ? i : mx, 0);
+  /* Tasa de aprobación: de cada $100 que se le reclaman al seguro, cuántos reconoce.
+     La ganancia dice el resultado; esto dice la causa. Un mes en rojo no es que se
+     trabajó mal: es que la aseguradora aprobó menos de lo que costó la reparación. */
+  const sumRec  = a => a.reduce((s,r) => s + (r.reclamado||0), 0);
+  const sumApr  = a => a.reduce((s,r) => s + (r.aprobado ||0), 0);
+  const segAnual = SEG.filter(r => hastaMes(r.f));
+  const segRecM = sumRec(seg),      segAprM = sumApr(seg);
+  const segRecA = sumRec(segAnual), segAprA = sumApr(segAnual);
+  const segTasaM = segRecM ? Math.round(segAprM / segRecM * 100) : null;
+  const segTasaA = segRecA ? Math.round(segAprA / segRecA * 100) : null;
+  /* Los meses que cerraron en rojo y cuánto costaron: es el número que hay que llevar
+     a la reunión, no esconder. */
+  const segRojos = (() => {
+    const porMes = {};
+    segAnual.forEach(r => { const k = +r.f.slice(5,7); porMes[k] = (porMes[k]||0) + r.gan; });
+    return Object.keys(porMes).filter(k => porMes[k] < 0)
+      .map(k => ({ m: +k, v: porMes[k] })).sort((x,y) => x.m - y.m);
+  })();
+  const segRojoTot = segRojos.reduce((s,x) => s + x.v, 0);
 
   return {
     m, a, meses, nom: MESES[m-1],
@@ -1513,6 +1532,7 @@ function datosInforme(m, a){
     stock: STK.length, ok, mal, ctrl,
     rec, techo: techo(),
     seg, segMes, segAnio, segSerie, mejorSeg,
+    segRecM, segAprM, segRecA, segAprA, segTasaM, segTasaA, segRojos, segRojoTot,
     sEnt:   serie(ENT.filter(enBase), r => r.f),
     sCm:    serie(CMV, r => r.f),
     sAcc:   serie(ACP, r => r.f, r => r.t),
@@ -1808,14 +1828,22 @@ th{background:#EEF4FB;color:var(--vw);font-size:12px;text-transform:uppercase}
   ${(D.seg.length||D.segAnio) ? `<div class="grid kpis">
     ${kpi(D.nom, mil(D.segMes), "Seguro s/IVA")}
     ${kpi(`Acumulado ene-${D.nom.slice(0,3).toLowerCase()}`, mil(D.segAnio), "Seguro s/IVA")}
-    ${kpi("Mayor mes", MESES[D.mejorSeg], mil(D.segSerie[D.mejorSeg]))}
+    ${kpi("Tasa de aprobación", D.segTasaM!==null?D.segTasaM+"%":"—",
+          D.segRecM?`Reclamado ${mil(D.segRecM)} · aprobado ${mil(D.segAprM)}`:"Sin reclamos en el mes")}
     ${kpi("Reclamos del mes", D.seg.length, "Facturados al seguro")}
     ${kpi("Resultado", D.segMes>=0?"Positivo":"Negativo", mon(D.segMes))}
   </div>
+  ${D.segRojos.length?`<div class="card" style="margin-top:16px;border-left:3px solid #D92D20">
+    <h2>Lo que no cubrió el seguro</h2>
+    <p class="insight">${D.segRojos.length===1?"Un mes cerró":"Los meses de "+D.segRojos.map(x=>MESES[x.m-1]).join(", ")+" cerraron"} en negativo${D.segRojos.length===1?" ("+MESES[D.segRojos[0].m-1]+")":""}, por <b>${mon(Math.abs(D.segRojoTot))}</b> en total.
+    Un mes en rojo no significa que la reparación se haya hecho mal ni tarde: significa que la aseguradora
+    reconoció menos de lo que costó el trabajo de chapa, y la diferencia la puso el concesionario.
+    Por eso al lado del resultado va la tasa de aprobación: el resultado es la consecuencia, la tasa es la causa.</p>
+  </div>`:""}
   <div class="grid two" style="margin-top:16px">
     <div class="card"><h2>Ganancia s/IVA seguro</h2><div id="recuperoSeguros"></div></div>
     <div class="card"><h2>Lectura recupero</h2>
-      <p class="insight">${D.nom} registra un resultado de recupero por seguros de ${mon(D.segMes)} s/IVA sobre ${D.seg.length} reclamos facturados. El acumulado enero-${D.nom.toLowerCase()} queda en ${mon(D.segAnio)} s/IVA. ${MESES[D.mejorSeg]} es el mes de mayor recupero del período, con ${mon(D.segSerie[D.mejorSeg])}.</p>
+      <p class="insight">${D.nom} registra un resultado de recupero por seguros de ${mon(D.segMes)} s/IVA sobre ${D.seg.length} reclamos facturados${D.segTasaM!==null?`, con una tasa de aprobación del <b>${D.segTasaM}%</b>: se reclamaron ${mon(D.segRecM)} y la aseguradora reconoció ${mon(D.segAprM)}`:""}. El acumulado enero-${D.nom.toLowerCase()} queda en ${mon(D.segAnio)} s/IVA${D.segTasaA!==null?`, con una aprobación acumulada del ${D.segTasaA}%`:""}. ${MESES[D.mejorSeg]} es el mes de mayor recupero del período, con ${mon(D.segSerie[D.mejorSeg])}.</p>
       ${D.seg.length?`<table style="margin-top:14px"><tr><th>Proveedor</th><th>Reclamos</th></tr>
       ${orden(contar(D.seg, r => r.prov || "Sin dato"),6).map(([k,v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("")}</table>`:""}
     </div>
@@ -2154,6 +2182,13 @@ MOD.tablero={ic:"📊",t:"Tablero",d:"Todo el sector en una pantalla · tocá cu
   const segPrev = SEG.filter(r => PV.f(r.f)).reduce((s, r) => s + r.gan, 0);
   const segAnio = SEG.filter(r => delAnio(r.f)).reduce((s, r) => s + r.gan, 0);
   const segCol  = segMes > 0 ? TB.ok : segMes < 0 ? TB.bad : TB.gr;
+  /* Tasa de aprobación: de cada $100 reclamados, cuántos reconoce la aseguradora.
+     La ganancia es el resultado; esto es la causa. Un mes en rojo no dice que se
+     trabajó mal, dice que aprobaron menos de lo que costó la chapa. */
+  const segRecP = segPer.reduce((s, r) => s + (r.reclamado || 0), 0);
+  const segAprP = segPer.reduce((s, r) => s + (r.aprobado  || 0), 0);
+  const segTasa = segRecP ? Math.round(segAprP / segRecP * 100) : null;
+  const segTCol = segTasa === null ? TB.gr : segTasa >= 90 ? TB.ok : segTasa >= 70 ? TB.warn : TB.bad;
 
   const recA = REC.filter(r => PV.f(r.f) && okMod(r)).length;
   const armA = REC.filter(r => PV.f(r.fArm)).length;
@@ -2267,7 +2302,9 @@ MOD.tablero={ic:"📊",t:"Tablero",d:"Todo el sector en una pantalla · tocá cu
     ["Unidades recibidas", S.rc.length], ["Unidades preparadas", P.arm.length], ["Entregas", S.e.length],
     ["Stock físico hoy", st.length], ["Antelación del armado (días)", P.antel.length ? P.antelProm : ""],
     ["Accesorios facturados $", Math.round(pesosAc)], ["Tasa de accesorios %", tAcc], ["Tasa de contratos %", tCm],
-    ["Ocupación bajo techo", `${T.bajoTecho} de ${T.cupos}`], [],
+    ["Ocupación bajo techo", `${T.bajoTecho} de ${T.cupos}`],
+    ["Recupero del seguro $", Math.round(segMes)], ["Reclamado al seguro $", Math.round(segRecP)],
+    ["Aprobado por el seguro $", Math.round(segAprP)], ["Tasa de aprobación %", segTasa === null ? "" : segTasa], [],
     ["Alertas"], ...AL.map(a => [NIV[a[0]][0], a[2], a[1], a[3]])];
 
   const hora = ULT_LECTURA ? ULT_LECTURA.toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"}) : "";
@@ -2306,7 +2343,15 @@ MOD.tablero={ic:"📊",t:"Tablero",d:"Todo el sector en una pantalla · tocá cu
       n: SEG.length ? mill(segMes) : "—",
       dl: SEG.length ? tbDelta(segMes, segPrev, PV.txt, mill) : `<span><small>falta correr EnviarSeguro en el Excel</small></span>`,
       extra: SEG.length ? tbSplit([["Reclamos del período", segPer.length, segCol]]) : "",
-      pie: SEG.length ? `Acumulado ${F.anio}: <b>${mill(segAnio)}</b>` : "Sin datos cargados"})}
+      // La tasa de aprobación va acá y no en tbSplit: esa barra reparte proporciones
+      // entre cosas de la misma especie, y un porcentaje al lado de una cantidad de
+      // reclamos no reparte nada. Acá además se lee como lo que es, la causa del número
+      // de arriba: de cada $100 reclamados, cuántos reconoció la aseguradora.
+      pie: SEG.length
+        ? (segTasa !== null
+            ? `Aprobación del seguro: <b style="color:${segTCol}">${segTasa}%</b> · reclamado ${mill(segRecP)}, aprobado ${mill(segAprP)}<br>`
+            : "") + `Acumulado ${F.anio}: <b>${mill(segAnio)}</b>`
+        : "Sin datos cargados"})}
   </div>
 
   <div class="tb-g r2">
