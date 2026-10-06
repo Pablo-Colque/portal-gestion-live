@@ -2480,13 +2480,18 @@ async function login(){
   err.style.color="var(--mute)"; err.textContent="Verificando…"; btn.disabled=true;
   try{
     const j=await pedirJSON(API_URL+"?accion=login&clave="+encodeURIComponent(v));
-    if(!j.ok){ if(j.error==="Clave incorrecta")throw new Error("CLAVE"); throw new Error(j.error||"respuesta sin ok") }
+    // Si el servidor contestó, el mensaje es suyo y se muestra tal cual: puede ser
+    // "Clave incorrecta · quedan 2 intentos" o el freno por demasiados intentos.
+    // Antes, cualquier respuesta que no fuera exactamente "Clave incorrecta" salía
+    // como "No se pudo conectar", y eso hacía pensar en un problema de internet.
+    if(!j.ok)throw new Error("SRV:"+(j.error||"respuesta sin ok"));
     localStorage.setItem(TOKEN_KEY,j.token);
     err.textContent=""; document.getElementById("loginOverlay").classList.add("hidden");
     cargar();
   }catch(ex){
     err.style.color="var(--bad)";
-    if(ex.message==="CLAVE")err.textContent="Clave incorrecta";
+    const delServidor=String(ex.message||"").indexOf("SRV:")===0;
+    if(delServidor)err.textContent=ex.message.slice(4);
     else{console.error("[Gestión] Error de login:",ex);err.textContent="No se pudo conectar. Intentá de nuevo en unos minutos."}
     pass.value=""; pass.focus();
   }finally{btn.disabled=false}
