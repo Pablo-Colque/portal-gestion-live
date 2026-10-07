@@ -912,6 +912,142 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
   .tb{box-shadow:none!important;border:1px solid #d0d7e0!important}
   .tb:before{display:none}
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK MODE CONTRAST & CONTINUITY FIX v7
+   Corrección visual exclusivamente: contraste, alertas y fondo continuo.
+   No modifica datos, cálculos, conexiones, IDs ni lógica JavaScript.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root[data-tema="oscuro"]{
+  background:#07111e;
+}
+:root[data-tema="oscuro"] body,
+:root[data-tema="oscuro"] .main,
+:root[data-tema="oscuro"] .body,
+:root[data-tema="oscuro"] .panel,
+:root[data-tema="oscuro"] .panel.on{
+  background:#081321;
+}
+:root[data-tema="oscuro"] .main{min-height:100vh}
+:root[data-tema="oscuro"] .body{min-height:calc(100vh - 130px)}
+
+/* Resumen ejecutivo: texto principal y secundarios legibles sobre oscuro */
+:root[data-tema="oscuro"] .frase{
+  color:#d9e7f7;
+  text-shadow:0 1px 0 rgba(0,0,0,.12);
+}
+:root[data-tema="oscuro"] .frase b{color:#72b7ff}
+:root[data-tema="oscuro"] .sub{color:#a8b9ce}
+
+/* KPI y tarjetas genéricas */
+:root[data-tema="oscuro"] .k{
+  background:linear-gradient(180deg,#10233a 0%,#0e2035 100%);
+  border-color:#244260;
+}
+:root[data-tema="oscuro"] .k:after{background:rgba(92,166,242,.055)}
+:root[data-tema="oscuro"] .k .n{color:#f4f8ff}
+:root[data-tema="oscuro"] .k .l{color:#c7d7e9}
+:root[data-tema="oscuro"] .k .d{color:#95aac3}
+:root[data-tema="oscuro"] .card h3{color:#c9d8ea;border-color:#243d5a}
+:root[data-tema="oscuro"] .card h3 span{color:#93a8c0}
+:root[data-tema="oscuro"] .big{color:#f0f6ff}
+
+/* Barras, rankings, leyendas y selectores de gráficos */
+:root[data-tema="oscuro"] .hb .t{color:#c6d6e8}
+:root[data-tema="oscuro"] .hb .v{color:#f0f6ff}
+:root[data-tema="oscuro"] .ley{color:#aabbd0}
+:root[data-tema="oscuro"] .chart-switch{background:#102238;border-color:#27435f}
+:root[data-tema="oscuro"] .chart-switch button{color:#b8c9dc}
+:root[data-tema="oscuro"] .chart-switch button:hover{background:#17304d;color:#f3f8ff}
+:root[data-tema="oscuro"] .chart-headline .metric{color:#eaf3ff}
+:root[data-tema="oscuro"] .linechart .axistext{fill:#9fb3cb}
+:root[data-tema="oscuro"] .linechart .grid{stroke:#213a57}
+
+/* Tablas: eliminar cualquier parche claro y sostener el fondo oscuro de punta a punta */
+:root[data-tema="oscuro"] .tw{background:#0e2035;border-color:#27425f}
+:root[data-tema="oscuro"] table{background:#0e2035}
+:root[data-tema="oscuro"] th{background:#132a44;color:#cbd9e9;border-color:#2a4765}
+:root[data-tema="oscuro"] td{background:#0e2035;color:#e5eef8;border-color:#203852}
+:root[data-tema="oscuro"] tbody tr:nth-child(even) td{background:#10243b}
+:root[data-tema="oscuro"] tbody tr:hover td,
+:root[data-tema="oscuro"] table tr:hover td{background:#17304d}
+
+/* Alertas: texto, estado e indicador de severidad con alto contraste */
+:root[data-tema="oscuro"] .a{
+  background:#0f2238;
+  border-color:#294762;
+  grid-template-columns:6px 1fr auto;
+}
+:root[data-tema="oscuro"] .a:hover{background:#122a45;border-color:#3e6489}
+:root[data-tema="oscuro"] .a b{color:#eef5ff}
+:root[data-tema="oscuro"] .a p{color:#b7c8dc}
+:root[data-tema="oscuro"] .a .go{color:#70b7ff}
+:root[data-tema="oscuro"] .a i{width:6px;filter:saturate(1.15) brightness(1.12)}
+:root[data-tema="oscuro"] .a.b i{box-shadow:0 0 12px rgba(255,105,105,.42)}
+:root[data-tema="oscuro"] .a.w i{box-shadow:0 0 12px rgba(244,183,63,.36)}
+:root[data-tema="oscuro"] .a.o i{box-shadow:0 0 12px rgba(53,196,132,.32)}
+:root[data-tema="oscuro"] .a.n i{box-shadow:0 0 12px rgba(92,166,242,.30)}
+
+/* Iconos del menú: más presencia sin volverlos estridentes */
+:root[data-tema="oscuro"] .nav .ic{
+  width:22px;height:22px;
+  display:grid;place-items:center;
+  border-radius:6px;
+  background:rgba(255,255,255,.055);
+  border:1px solid rgba(255,255,255,.07);
+  filter:saturate(1.2) brightness(1.18);
+  opacity:1;
+}
+:root[data-tema="oscuro"] .nav button.on .ic{
+  background:rgba(108,176,255,.14);
+  border-color:rgba(108,176,255,.22);
+}
+
+/* Cumplimiento / ritmo */
+:root[data-tema="oscuro"] .ritmo-fila,
+:root[data-tema="oscuro"] .ritmo div{
+  background:#10243a;
+  border-color:#29445f;
+}
+:root[data-tema="oscuro"] .ritmo-fila .rf-t,
+:root[data-tema="oscuro"] .ritmo .l{color:#bed0e3}
+:root[data-tema="oscuro"] .ritmo-fila>div:not(.rf-t),
+:root[data-tema="oscuro"] .ritmo .n{color:#f1f7ff}
+:root[data-tema="oscuro"] .prog{background:#17304b}
+
+/* Aros / auxiliares */
+:root[data-tema="oscuro"] .aro-t{color:#c7d7e9}
+:root[data-tema="oscuro"] .aro-d{color:#96abc3}
+
+/* Filtros: evitar controles claros residuales en modo oscuro */
+:root[data-tema="oscuro"] .btns,
+:root[data-tema="oscuro"] .seg{background:#102238;border-color:#2a4662}
+:root[data-tema="oscuro"] .btns button,
+:root[data-tema="oscuro"] .seg button{color:#c5d5e7}
+:root[data-tema="oscuro"] .filt select,
+:root[data-tema="oscuro"] .filt input{background:#102238;color:#e6eef8;border-color:#2a4662}
+:root[data-tema="oscuro"] .filt select option{background:#102238;color:#e6eef8}
+
+/* El tablero sincronizado mantiene una sola superficie visual, sin cortes claros */
+:root[data-tema="oscuro"] .tb,
+:root[data-tema="oscuro"] .tb-c,
+:root[data-tema="oscuro"] .tb .tb-t{color:var(--t-tx)}
+:root[data-tema="oscuro"] .tb-c h4{color:#eef5ff}
+:root[data-tema="oscuro"] .tb-c h4 span{color:#9db0c7}
+:root[data-tema="oscuro"] .tb .tb-pe button,
+:root[data-tema="oscuro"] .tb .tb-ac button,
+:root[data-tema="oscuro"] .tb .tb-al button{color:#edf5ff}
+:root[data-tema="oscuro"] .tb .tb-al em{color:#9fb2c9}
+:root[data-tema="oscuro"] .tb-chip{background:#132743}
+
+@media print{
+  :root[data-tema="oscuro"] body,
+  :root[data-tema="oscuro"] .main,
+  :root[data-tema="oscuro"] .body,
+  :root[data-tema="oscuro"] .panel{background:#fff!important;color:#172033!important}
+}
+
 </style>
 </head>
 <body>
