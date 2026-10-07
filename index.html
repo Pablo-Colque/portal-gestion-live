@@ -1048,6 +1048,418 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
   :root[data-tema="oscuro"] .panel{background:#fff!important;color:#172033!important}
 }
 
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXECUTIVE BI RESPONSIVE SYSTEM v8 — Dirección / Gerencia / Mobile First
+   Capa visual únicamente. Mantiene intactos datos, cálculos, conexiones,
+   endpoints, IDs funcionales y JavaScript existente.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.mobile-nav-toggle,.mobile-filter-toggle{
+  position:fixed!important;
+  width:1px!important;height:1px!important;
+  opacity:0!important;pointer-events:none!important;
+  clip:rect(0,0,0,0)!important;
+}
+.mobile-shellbar,.mobile-nav-backdrop,.mobile-side-close{display:none}
+
+/* Pulido de superficies ejecutivas en escritorio sin alterar la composición */
+@media(min-width:981px){
+  .main{min-width:0}
+  .head{box-shadow:0 1px 0 rgba(0,30,80,.025)}
+  .body{overflow:visible}
+  .card,.k,.tb-c,.tb .tb-t{isolation:isolate}
+}
+
+/* TABLET: navegación tipo drawer y contenido a ancho real */
+@media(max-width:980px){
+  html,body{width:100%;max-width:100%;overflow-x:hidden!important}
+  body{min-width:0!important}
+  .app{
+    display:block!important;
+    grid-template-columns:none!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .main{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow:visible!important;
+  }
+
+  /* Barra móvil superior: reemplaza visualmente la sidebar fija */
+  .mobile-shellbar{
+    position:sticky;
+    top:0;
+    z-index:55;
+    display:grid;
+    grid-template-columns:42px minmax(0,1fr) auto;
+    align-items:center;
+    gap:10px;
+    min-height:56px;
+    padding:8px 12px;
+    color:#fff;
+    background:linear-gradient(110deg,#001431 0%,#001e50 62%,#07336d 100%);
+    border-bottom:1px solid rgba(255,255,255,.10);
+    box-shadow:0 7px 20px rgba(0,30,80,.18);
+  }
+  .mobile-menu-btn,.mobile-filter-btn{
+    min-height:38px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:10px;
+    display:grid;
+    place-items:center;
+    color:#fff;
+    background:rgba(255,255,255,.07);
+    font-weight:800;
+    cursor:pointer;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .mobile-menu-btn{font-size:20px;line-height:1}
+  .mobile-filter-btn{padding:0 11px;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+  .mobile-shellbrand{min-width:0;line-height:1.05}
+  .mobile-shellbrand b{
+    display:block;
+    font-family:var(--disp);
+    font-size:19px;
+    letter-spacing:.015em;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .mobile-shellbrand span{
+    display:block;
+    margin-top:3px;
+    color:#a8c2e5;
+    font-size:9px;
+    font-weight:700;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  /* Sidebar overlay / drawer */
+  .side{
+    position:fixed!important;
+    top:0!important;left:0!important;bottom:0!important;
+    width:min(84vw,320px)!important;
+    max-width:320px!important;
+    height:100dvh!important;
+    z-index:80!important;
+    transform:translateX(-105%);
+    transition:transform .22s ease;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    padding:20px 14px 16px!important;
+    box-shadow:18px 0 48px rgba(0,20,55,.32)!important;
+  }
+  #mobileNavToggle:checked ~ .app .side{transform:translateX(0)}
+  .mobile-side-close{
+    display:grid;
+    place-items:center;
+    position:absolute;
+    top:12px;right:12px;
+    width:36px;height:36px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:10px;
+    color:#fff;
+    background:rgba(255,255,255,.07);
+    font-size:22px;
+    line-height:1;
+    cursor:pointer;
+    z-index:2;
+  }
+  .side .m1{padding-right:42px}
+  .side .m2{font-size:28px}
+  .nav{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:5px!important;
+    overflow:visible!important;
+    margin-top:20px!important;
+  }
+  .nav button{
+    width:calc(100% - 2px)!important;
+    white-space:normal!important;
+    min-height:43px;
+    flex:none!important;
+  }
+  .side .pie{display:block!important;margin-top:12px}
+
+  .mobile-nav-backdrop{
+    display:block;
+    position:fixed;
+    inset:0;
+    z-index:75;
+    background:rgba(3,14,32,.58);
+    backdrop-filter:blur(2px);
+    -webkit-backdrop-filter:blur(2px);
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transition:opacity .2s ease,visibility .2s ease;
+  }
+  #mobileNavToggle:checked ~ .mobile-nav-backdrop{
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+  }
+
+  /* Encabezado ejecutivo compacto */
+  .head{
+    width:100%!important;
+    max-width:100%!important;
+    min-height:auto!important;
+    padding:13px 14px 11px!important;
+    gap:9px!important;
+    align-items:flex-start!important;
+    background:rgba(248,250,253,.97)!important;
+  }
+  .head>div:first-child{
+    flex:1 1 100%!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+  .head>div:first-child:before{font-size:8px!important;margin-bottom:3px!important}
+  h1{
+    max-width:100%!important;
+    font-size:clamp(23px,4.8vw,30px)!important;
+    line-height:1.06!important;
+    overflow-wrap:normal!important;
+    word-break:normal!important;
+    text-wrap:balance;
+  }
+  .head .desc{font-size:11px!important;line-height:1.35!important;max-width:100%!important}
+  .acts{
+    width:100%!important;
+    display:flex!important;
+    gap:6px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    padding:1px 0 3px!important;
+    scrollbar-width:none;
+  }
+  .acts::-webkit-scrollbar{display:none}
+  .acts .btn{flex:0 0 auto!important;white-space:nowrap!important;min-height:34px!important}
+
+  /* Filtros colapsables: cerrados de inicio para no comerse la pantalla */
+  .filt{
+    display:none!important;
+    position:relative!important;
+    top:auto!important;
+    z-index:20!important;
+    width:100%!important;
+    max-width:100%!important;
+    padding:12px 14px 14px!important;
+    gap:9px!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    background:#f1f5f9!important;
+    border-bottom:1px solid #d9e3ee!important;
+    box-shadow:0 8px 18px rgba(0,30,80,.06)!important;
+  }
+  #mobileFiltersToggle:checked ~ .app .filt{display:flex!important}
+  .filt:before{
+    display:block!important;
+    content:"FILTROS DE ANÁLISIS"!important;
+    width:100%;
+    margin:0 0 1px!important;
+    font-size:9px!important;
+    font-weight:800!important;
+    letter-spacing:.12em!important;
+    color:#687d96!important;
+  }
+  .filt select,.filt input,.filt>.btn,.seg,.btns{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+  }
+  .filt select{min-height:42px!important;font-size:14px!important;padding:8px 11px!important}
+  .filt>.btn{min-height:40px!important;text-align:center!important}
+  #modo{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  #fAnio{
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:4px!important;
+  }
+  #fMes{
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:4px!important;
+  }
+  .seg button,.btns button{
+    width:100%!important;
+    min-width:0!important;
+    min-height:38px!important;
+    display:grid!important;
+    place-items:center!important;
+    text-align:center!important;
+    padding:6px 5px!important;
+    white-space:normal!important;
+  }
+  .filt .cnt{width:100%!important;margin:0!important;padding-top:3px!important;text-align:left!important}
+
+  /* Contenido: ancho completo, sin min-width heredados */
+  .body{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    padding:12px!important;
+    margin:0!important;
+    overflow:visible!important;
+  }
+  .panel,.panel.on,.g,.g2,.g3,.g21,.card,.k,.kpis,.tb,.tb-g,.tb-c,.tb-t{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .g2,.g3,.g21{grid-template-columns:minmax(0,1fr)!important}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin:10px 0 12px!important}
+  .k{min-height:92px!important;padding:11px 12px 10px 14px!important}
+  .k .n{font-size:clamp(25px,5vw,32px)!important}
+  .k .l{font-size:10px!important;letter-spacing:.04em!important}
+  .k .d{font-size:10px!important}
+  .frase{font-size:clamp(21px,4.4vw,26px)!important;line-height:1.12!important;max-width:100%!important}
+  .sub{font-size:11px!important;line-height:1.4!important}
+  .card{padding:12px!important;border-radius:12px!important}
+  .card h3{min-height:0!important;font-size:10px!important;padding-bottom:8px!important;margin-bottom:9px!important}
+  .big{font-size:34px!important}
+
+  /* Gráficos: 100% del viewport útil */
+  .ech,.exec-chart,.linechart,.cols{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .ech{overflow:hidden!important}
+  .ech>div,.ech canvas,.ech svg{max-width:100%!important}
+  .chart-switch{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:4px!important;
+  }
+  .chart-switch button{white-space:normal!important;text-align:center!important;min-height:34px!important}
+  .linechart svg{height:190px!important}
+  .cols{height:165px!important;padding-left:0!important;padding-right:0!important}
+  .mes{gap:2px!important;font-size:9px!important}
+  .hb{grid-template-columns:minmax(76px,112px) minmax(0,1fr) 48px!important;gap:7px!important}
+  .hb .t{font-size:11px!important}
+  .hb .v{font-size:11px!important}
+  .rk{columns:1!important}
+
+  /* Tablas: el scroll queda dentro de la tarjeta, nunca en toda la página */
+  .tw{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-inline:contain;
+  }
+  .tw table{min-width:680px!important}
+
+  /* Tablero de Gestión */
+  .tb{width:100%!important;padding:9px!important;border-radius:12px!important;gap:9px!important;overflow:hidden!important}
+  .tb:before{right:10px!important;top:-8px!important}
+  .tb-top{align-items:flex-start!important;gap:7px!important}
+  .tb-top>b{font-size:18px!important;line-height:1.05!important}
+  .tb-top span{margin-left:0!important;display:block!important;font-size:10px!important}
+  .tb-live{font-size:9px!important;white-space:normal!important}
+  .tb-k{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  .tb .tb-t{padding:9px!important;gap:6px!important}
+  .tb-ic{width:29px!important;height:29px!important}
+  .tb-tl{font-size:10px!important;letter-spacing:.04em!important}
+  .tb-n{gap:5px!important}
+  .tb-n b{font-size:30px!important}
+  .tb-dl{font-size:10px!important}
+  .tb-g.r2,.tb-g.r3,.tb-g.r4{grid-template-columns:minmax(0,1fr)!important}
+  .tb-g.r2>:nth-child(2),.tb-g.r4>:first-child{grid-column:auto!important;order:initial!important}
+  .tb-c{padding:10px!important}
+  .tb-c h4{font-size:12px!important;line-height:1.15!important;flex-wrap:wrap!important}
+  .tb-dn{grid-template-columns:minmax(0,1fr)!important}
+  .tb-te{grid-template-columns:minmax(0,1fr)!important;justify-items:center!important;text-align:center!important}
+  .tb-tl2{width:100%!important;text-align:left!important}
+  .tb .tb-hb button{grid-template-columns:minmax(70px,100px) minmax(0,1fr) 26px 34px!important;gap:6px!important}
+  .tb-pe,.tb-ac{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important}
+  .tb .tb-pe button,.tb .tb-ac button{min-width:0!important;padding:8px!important}
+  .tb-pe b{font-size:23px!important}.tb-ac b{font-size:21px!important}
+  .tb .tb-al button{
+    grid-template-columns:68px minmax(0,1fr) 32px!important;
+    gap:6px!important;
+    padding:7px!important;
+  }
+  .tb-al em{grid-column:2/-1!important;min-width:0!important;white-space:normal!important}
+
+  /* Tema oscuro también en controles móviles */
+  :root[data-tema="oscuro"] .mobile-shellbar{
+    background:linear-gradient(110deg,#050e1b 0%,#08182a 60%,#0d2744 100%);
+    border-color:#1d3550;
+  }
+  :root[data-tema="oscuro"] .head{background:rgba(8,19,33,.97)!important}
+  :root[data-tema="oscuro"] .filt{background:#0d1e32!important;border-color:#223b5a!important}
+  :root[data-tema="oscuro"] .filt:before{color:#93a7bf!important}
+}
+
+/* CELULAR: composición vertical y táctil */
+@media(max-width:560px){
+  .mobile-shellbar{grid-template-columns:40px minmax(0,1fr) auto;padding:7px 9px;min-height:54px}
+  .mobile-filter-btn{padding:0 9px;font-size:10px}
+  .head{padding:11px 10px 9px!important}
+  h1{font-size:clamp(22px,6.6vw,27px)!important;line-height:1.04!important}
+  .head .desc{font-size:10px!important}
+  .body{padding:9px!important}
+  .kpis{gap:7px!important}
+  .k{padding:10px 10px 9px 12px!important;min-height:88px!important}
+  .k .n{font-size:clamp(24px,8vw,30px)!important}
+  .k .l{font-size:9px!important}
+  .k .d{font-size:9px!important}
+  .card{padding:10px!important}
+  .frase{font-size:clamp(20px,6vw,24px)!important}
+  .hb{grid-template-columns:minmax(70px,98px) minmax(0,1fr) 43px!important;gap:5px!important}
+  .hb .t,.hb .v{font-size:10px!important}
+  .tb{padding:7px!important;gap:7px!important}
+  .tb-k{gap:6px!important}
+  .tb .tb-t{padding:8px!important}
+  .tb-th{gap:7px!important}
+  .tb-tl{font-size:9px!important}
+  .tb-n b{font-size:28px!important}
+  .tb-pie,.tb-n small{font-size:9px!important}
+  .tb-fl{grid-template-columns:minmax(0,1fr)!important;gap:5px!important}
+  .tb .tb-fl button{
+    clip-path:none!important;
+    border-radius:8px!important;
+    padding:8px 10px!important;
+  }
+  .tb-fl small{font-size:9px!important}.tb-fl b{font-size:24px!important}
+  .tb .tb-hb button{grid-template-columns:minmax(62px,90px) minmax(0,1fr) 24px 30px!important;gap:5px!important;font-size:9px!important}
+  .tb-hb span,.tb-hb em{font-size:9px!important}
+  .tb .tb-al button{grid-template-columns:62px minmax(0,1fr) 30px!important;font-size:9px!important}
+  .tb-al b{font-size:18px!important}
+}
+
+@media(max-width:380px){
+  .mobile-shellbrand span{display:none}
+  .mobile-shellbrand b{font-size:18px}
+  .mobile-filter-btn{font-size:0;width:40px;padding:0}
+  .mobile-filter-btn:after{content:"⌄";font-size:18px;line-height:1}
+  #fMes{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .kpis{grid-template-columns:minmax(0,1fr)!important}
+  .tb-k{grid-template-columns:minmax(0,1fr)!important}
+  .tb-pe,.tb-ac{grid-template-columns:minmax(0,1fr)!important}
+}
+
+@media print{
+  .mobile-shellbar,.mobile-nav-backdrop,.mobile-side-close,.mobile-nav-toggle,.mobile-filter-toggle{display:none!important}
+}
+
 </style>
 </head>
 <body>
@@ -1062,8 +1474,13 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
   </div>
 </div>
 
+<input type="checkbox" id="mobileNavToggle" class="mobile-nav-toggle" aria-hidden="true">
+<input type="checkbox" id="mobileFiltersToggle" class="mobile-filter-toggle" aria-hidden="true">
+<label for="mobileNavToggle" class="mobile-nav-backdrop" aria-label="Cerrar menú"></label>
+
 <div class="app">
   <aside class="side">
+    <label for="mobileNavToggle" class="mobile-side-close" aria-label="Cerrar navegación">×</label>
     <div class="m1">Autosol Jujuy · Volkswagen</div>
     <div class="m2">Gestión<br>Pre-Entregas</div>
     <nav class="nav" id="nav"></nav>
@@ -1071,6 +1488,11 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
   </aside>
 
   <main class="main">
+    <div class="mobile-shellbar" role="navigation" aria-label="Controles móviles">
+      <label for="mobileNavToggle" class="mobile-menu-btn" aria-label="Abrir navegación">☰</label>
+      <div class="mobile-shellbrand"><b>Gestión Pre-Entregas</b><span>Autosol Jujuy · Volkswagen</span></div>
+      <label for="mobileFiltersToggle" class="mobile-filter-btn" aria-label="Mostrar u ocultar filtros">Filtros</label>
+    </div>
     <div class="head">
       <div><h1 id="tit"></h1><div class="desc" id="desc"></div></div>
       <div class="acts">
