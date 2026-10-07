@@ -412,7 +412,12 @@ th{z-index:2}
 .tb-okk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t-tx2)}
 .tb-okk::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--t-ok)}
 
-@media(max-width:1500px){.tb-k{grid-template-columns:repeat(4,minmax(0,1fr))}.tb-g.r3{grid-template-columns:repeat(2,minmax(0,1fr))}.tb-g.r4{grid-template-columns:repeat(2,minmax(0,1fr))}.tb-g.r4>:first-child{grid-column:1/-1}}
+/* Los indicadores de arriba son SIETE, y siete no se reparte en cuatro ni en dos:
+   siempre sobraba un hueco al final de la última fila, y ese hueco se veía también
+   al imprimir. La séptima baldosa —Recupero del seguro, la que más texto lleva—
+   ocupa el lugar que sobra. Solo acomoda el espacio: no cambia ningún número. */
+@media(max-width:1500px){.tb-k{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .tb-k>:nth-child(7){grid-column:span 2}.tb-g.r3{grid-template-columns:repeat(2,minmax(0,1fr))}.tb-g.r4{grid-template-columns:repeat(2,minmax(0,1fr))}.tb-g.r4>:first-child{grid-column:1/-1}}
 @media(max-width:1150px){.tb-g.r2{grid-template-columns:repeat(2,minmax(0,1fr))}.tb-g.r2>:nth-child(2){grid-column:1/-1;order:-1}}
 @media(max-width:700px){.tb{padding:10px;border-radius:12px}.tb-k{grid-template-columns:repeat(2,minmax(0,1fr))}.tb-g.r2,.tb-g.r3,.tb-g.r4{grid-template-columns:minmax(0,1fr)}.tb-n b{font-size:32px}.tb .tb-al button{grid-template-columns:70px minmax(0,1fr) 34px}.tb-al em{grid-column:2/-1}.tb-top span{margin-left:0;display:block}}
 @media print{.tb{border-radius:0}.tb-live{display:none}}
@@ -1374,6 +1379,7 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
   .tb-top span{margin-left:0!important;display:block!important;font-size:10px!important}
   .tb-live{font-size:9px!important;white-space:normal!important}
   .tb-k{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  .tb-k>:nth-child(7){grid-column:span 2}
   .tb .tb-t{padding:9px!important;gap:6px!important}
   .tb-ic{width:29px!important;height:29px!important}
   .tb-tl{font-size:10px!important;letter-spacing:.04em!important}
@@ -1452,7 +1458,10 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
   .mobile-filter-btn:after{content:"⌄";font-size:18px;line-height:1}
   #fMes{grid-template-columns:repeat(3,minmax(0,1fr))!important}
   .kpis{grid-template-columns:minmax(0,1fr)!important}
+  /* En una sola columna no hay lugar sobrante que llenar, y un span crearía una
+     columna invisible que empuja la pantalla hacia el costado. */
   .tb-k{grid-template-columns:minmax(0,1fr)!important}
+  .tb-k>:nth-child(7){grid-column:auto!important}
   .tb-pe,.tb-ac{grid-template-columns:minmax(0,1fr)!important}
 }
 
@@ -2823,211 +2832,10 @@ th{background:#EEF4FB;color:var(--vw);font-size:12px;text-transform:uppercase}
 @media(max-width:700px){.kpis,.three,.two{grid-template-columns:1fr}.barlbl{width:135px;font-size:12px}}
 @media print{body{background:#fff}nav{display:none}.view{display:block!important;page-break-before:always}.card{box-shadow:none}}
 
+  /* El informe descargable es un documento aparte: hoja vertical, sin barra lateral
+     ni filtros. El bloque de tema e impresión del portal no corresponde acá: apunta
+     a clases que este documento no tiene y además le forzaba hoja apaisada. */
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   EXECUTIVE THEME + PRINT CONTROL v9
-   1) Navegación lateral acompaña tema claro/oscuro.
-   2) Impresión/PDF siempre clara y legible.
-   3) El módulo actual se ajusta automáticamente a UNA sola hoja A4 apaisada.
-   No altera datos, cálculos, conexiones, endpoints ni filtros.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── Navegación en TEMA CLARO ───────────────────────────────────────────── */
-:root:not([data-tema="oscuro"]) .side{
-  background:linear-gradient(180deg,#f8fbff 0%,#eef4fb 58%,#e7eff8 100%)!important;
-  color:#10233f!important;
-  border-right:1px solid #d4deea!important;
-  box-shadow:8px 0 28px rgba(0,30,80,.07)!important;
-}
-:root:not([data-tema="oscuro"]) .side:before{
-  color:#0b5cab!important;
-  background:#fff!important;
-  border-color:#cddbeb!important;
-}
-:root:not([data-tema="oscuro"]) .side .m1{color:#6c8099!important}
-:root:not([data-tema="oscuro"]) .side .m2{color:#001e50!important}
-:root:not([data-tema="oscuro"]) .nav button{
-  color:#435b78!important;
-  background:transparent!important;
-  border-color:transparent!important;
-}
-:root:not([data-tema="oscuro"]) .nav button:hover{
-  color:#001e50!important;
-  background:#e5eef8!important;
-  border-color:#d3e0ee!important;
-}
-:root:not([data-tema="oscuro"]) .nav button.on{
-  color:#fff!important;
-  background:linear-gradient(135deg,#001e50,#0b5cab)!important;
-  border-color:#001e50!important;
-  box-shadow:0 7px 18px rgba(0,30,80,.18)!important;
-}
-:root:not([data-tema="oscuro"]) .nav .ic{
-  color:inherit!important;
-  background:rgba(15,111,220,.06)!important;
-  border-color:rgba(15,111,220,.08)!important;
-}
-:root:not([data-tema="oscuro"]) .nav button.on .ic{
-  background:rgba(255,255,255,.13)!important;
-  border-color:rgba(255,255,255,.18)!important;
-}
-:root:not([data-tema="oscuro"]) .side .pie{
-  color:#74869c!important;
-  border-color:#d3deea!important;
-}
-:root:not([data-tema="oscuro"]) .mobile-side-close{
-  color:#001e50!important;
-  background:#fff!important;
-  border-color:#cbd8e7!important;
-  box-shadow:0 2px 8px rgba(0,30,80,.08)!important;
-}
-
-/* La barra móvil también acompaña el tema */
-@media(max-width:980px){
-  :root:not([data-tema="oscuro"]) .mobile-shellbar{
-    color:#001e50!important;
-    background:linear-gradient(110deg,#fbfdff 0%,#f1f6fb 62%,#e8f1fa 100%)!important;
-    border-bottom:1px solid #d4dfeb!important;
-    box-shadow:0 5px 18px rgba(0,30,80,.09)!important;
-  }
-  :root:not([data-tema="oscuro"]) .mobile-menu-btn,
-  :root:not([data-tema="oscuro"]) .mobile-filter-btn{
-    color:#001e50!important;
-    background:#fff!important;
-    border-color:#cdd9e7!important;
-  }
-  :root:not([data-tema="oscuro"]) .mobile-shellbrand span{color:#71849b!important}
-  :root:not([data-tema="oscuro"]) .mobile-nav-backdrop{background:rgba(6,24,48,.38)!important}
-}
-
-/* ── IMPRESIÓN / PDF: SIEMPRE CLARO + UNA HOJA ────────────────────────── */
-@media print{
-  @page{size:A4 landscape;margin:6mm}
-
-  html,body{
-    background:#fff!important;
-    color:#10233f!important;
-    width:100%!important;
-    min-width:0!important;
-    max-width:none!important;
-    overflow:visible!important;
-  }
-  body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-
-  /* Solo contenido gerencial actual; sin navegación ni controles */
-  .side,.filt,.acts,.mobile-shellbar,.mobile-nav-backdrop,.mobile-side-close,
-  .mobile-nav-toggle,.mobile-filter-toggle,.toast,.noprint,.login,.cargando{
-    display:none!important;
-  }
-  .app,.main{
-    display:block!important;
-    width:100%!important;
-    max-width:none!important;
-    min-width:0!important;
-    margin:0!important;
-    padding:0!important;
-    background:#fff!important;
-    color:#10233f!important;
-  }
-  .head{
-    display:block!important;
-    min-height:0!important;
-    margin:0 0 4mm!important;
-    padding:0 0 3mm!important;
-    background:#fff!important;
-    border:0!important;
-    border-bottom:1px solid #d8e1eb!important;
-    box-shadow:none!important;
-    color:#10233f!important;
-  }
-  .head>div:first-child:before{color:#0f6fdc!important}
-  h1{color:#001e50!important;font-size:22pt!important;line-height:1!important}
-  .head .desc{color:#566b83!important;font-size:9pt!important}
-
-  /* Escala dinámica colocada por beforeprint para que el módulo sea UNA hoja */
-  #body{
-    display:block!important;
-    width:var(--print-width,100%)!important;
-    max-width:none!important;
-    min-width:0!important;
-    margin:0!important;
-    padding:0!important;
-    zoom:var(--print-scale,1);
-    background:#fff!important;
-    color:#10233f!important;
-    overflow:visible!important;
-    page-break-inside:avoid!important;
-    break-inside:avoid-page!important;
-  }
-
-  /* Superficies genéricas */
-  .panel,.panel.on,.card,.k,.a,.ritmo-fila,.ritmo div,.tw,table{
-    background:#fff!important;
-    color:#10233f!important;
-    box-shadow:none!important;
-    text-shadow:none!important;
-  }
-  .card,.k,.a,.ritmo-fila,.ritmo div,.tw{
-    border-color:#ccd7e4!important;
-  }
-  .card h3,.frase,.frase b,.big,.k .n,.k .l,.k .d,
-  .hb .t,.hb .v,.aro-t,.aro-n,.aro-d{
-    color:#10233f!important;
-    text-shadow:none!important;
-  }
-  .sub,.card h3 span,.ley,.chart-note{color:#64748b!important}
-  th{background:#edf2f7!important;color:#334155!important;border-color:#cbd5e1!important}
-  td{background:#fff!important;color:#1e293b!important;border-color:#e2e8f0!important}
-  tbody tr:nth-child(even) td{background:#f8fafc!important}
-
-  /* Tablero de Gestión: en papel usa variables claras aunque la pantalla esté oscura */
-  .tb{
-    --t-bg:#ffffff!important;
-    --t-card:#ffffff!important;
-    --t-card2:#f4f7fb!important;
-    --t-line:#cfd9e6!important;
-    --t-tx:#10233f!important;
-    --t-tx2:#465b78!important;
-    --t-mu:#718198!important;
-    --t-az:#0f6fdc!important;
-    --t-nj:#c85b28!important;
-    --t-ag:#198754!important;
-    --t-vi:#7659c8!important;
-    --t-gr:#718198!important;
-    --t-ok:#198754!important;
-    --t-warn:#a86f00!important;
-    --t-bad:#b42318!important;
-    background:#fff!important;
-    color:#10233f!important;
-    border:1px solid #cfd9e6!important;
-    box-shadow:none!important;
-  }
-  .tb-c,.tb .tb-t,.tb .tb-pe button,.tb .tb-ac button,.tb .tb-al button{
-    background:#fff!important;
-    color:#10233f!important;
-    border-color:#cfd9e6!important;
-    box-shadow:none!important;
-  }
-  .tb-c h4,.tb-top b,.tb-tl,.tb-n b,.tb-pie b,.tb-pe b,.tb-ac b,.tb-al b{
-    color:#10233f!important;
-  }
-  .tb-c h4 span,.tb-top span,.tb-live,.tb-pie,.tb-nota,.tb-pe small,.tb-ac small,
-  .tb-ac em,.tb-al em,.tb-dl2 span,.tb-tl2 span,.tb-hb span,.tb-hb em{
-    color:#64748b!important;
-  }
-  .tb-sp,.tb-pr,.tb-hb .tr{background:#e7edf4!important}
-  .tb:before,.tb-live i{box-shadow:none!important}
-
-  /* ECharts renderiza SVG: forzar textos oscuros cuando se imprime desde modo oscuro */
-  .ech svg text,.exec-chart svg text,.linechart svg text,.tb svg text{
-    fill:#334155!important;
-  }
-  .ech,.exec-chart,.linechart{background:#fff!important}
-
-  /* Evitar que el navegador reparta el módulo en varias hojas */
-  #body,.panel,.panel.on{page-break-before:auto!important;page-break-after:auto!important}
-  .card,.k,.tb,.tb-c,.tb-t,.tw{page-break-inside:avoid!important;break-inside:avoid!important}
-}
 
 </style></head><body>
 <header><div class="header-wrap">
@@ -3719,10 +3527,13 @@ MOD.tablero={ic:"📊",t:"Tablero",d:"Todo el sector en una pantalla · tocá cu
       // entre cosas de la misma especie, y un porcentaje al lado de una cantidad de
       // reclamos no reparte nada. Acá además se lee como lo que es, la causa del número
       // de arriba: de cada $100 reclamados, cuántos reconoció la aseguradora.
+      // El detalle de reclamado y aprobado va en el tooltip y no en la baldosa: ahí
+      // ocupaba cuatro renglones y dejaba esta tarjeta más alta que las otras seis.
+      // El porcentaje, que es lo que se lee de un vistazo, queda a la vista.
       pie: SEG.length
         ? (segTasa !== null
-            ? `Aprobación del seguro: <b style="color:${segTCol}">${segTasa}%</b> · reclamado ${mill(segRecP)}, aprobado ${mill(segAprP)}<br>`
-            : "") + `Acumulado ${F.anio}: <b>${mill(segAnio)}</b>`
+            ? `<span title="Reclamado ${mill(segRecP)} · aprobado ${mill(segAprP)}">Aprobación <b style="color:${segTCol}">${segTasa}%</b></span> · `
+            : "") + `acumulado ${F.anio}: <b>${mill(segAnio)}</b>`
         : "Sin datos cargados"})}
   </div>
 
