@@ -721,9 +721,37 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
 .spin{border-color:#dce4ed;border-top-color:#0f6fdc}
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TABLERO DE GESTIÓN — Vista gerencial siempre oscura
+   TABLERO DE GESTIÓN — Tema sincronizado con el portal
+   Claro: lectura ejecutiva / proyector / PDF · Oscuro: monitor / control operativo
    ═══════════════════════════════════════════════════════════════════════════ */
 .tb{
+  --t-bg:#f4f7fb;
+  --t-card:#ffffff;
+  --t-card2:#f2f6fa;
+  --t-line:#d9e3ee;
+  --t-tx:#17283d;
+  --t-tx2:#435a73;
+  --t-mu:#73859a;
+  --t-az:#2f7fd3;
+  --t-nj:#c85e31;
+  --t-ag:#168f80;
+  --t-vi:#735fc7;
+  --t-gr:#8292a6;
+  --t-ok:#23895d;
+  --t-warn:#bf7d16;
+  --t-bad:#c94343;
+  position:relative;
+  background:
+    radial-gradient(circle at 88% -5%,rgba(47,127,211,.08),transparent 27%),
+    linear-gradient(180deg,#f8fafc 0%,#f2f6fa 100%);
+  color:var(--t-tx);
+  border:1px solid var(--t-line);
+  border-radius:16px;
+  padding:14px;
+  gap:11px;
+  box-shadow:0 12px 34px rgba(0,30,80,.08);
+}
+:root[data-tema="oscuro"] .tb{
   --t-bg:#07111f;
   --t-card:#0d1d33;
   --t-card2:#132743;
@@ -739,14 +767,11 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
   --t-ok:#35c484;
   --t-warn:#f4b73f;
   --t-bad:#ff6969;
-  position:relative;
   background:
     radial-gradient(circle at 88% -5%,rgba(61,142,234,.11),transparent 26%),
     linear-gradient(180deg,#07111f 0%,#091727 100%);
-  border:1px solid #1d3553;
-  border-radius:16px;
-  padding:14px;
-  gap:11px;
+  color:var(--t-tx);
+  border-color:#1d3553;
   box-shadow:0 18px 50px rgba(0,20,48,.22);
 }
 .tb:before{
@@ -762,41 +787,41 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
   letter-spacing:.12em;
   box-shadow:0 5px 16px rgba(15,111,220,.28);
 }
-.tb-top{padding:4px 5px 2px;border-bottom:1px solid rgba(255,255,255,.055);padding-bottom:10px}
+.tb-top{padding:4px 5px 2px;border-bottom:1px solid var(--t-line);padding-bottom:10px}
 .tb-top b{font-size:21px;letter-spacing:.055em}
-.tb-top span{color:#90a5c0}
-.tb-live{padding:4px 8px;border:1px solid #234467;border-radius:999px;background:#0c1b30;font-size:10px}
+.tb-top span{color:var(--t-mu)}
+.tb-live{padding:4px 8px;border:1px solid var(--t-line);border-radius:999px;background:var(--t-card2);font-size:10px;color:var(--t-tx2)}
 .tb-live i{box-shadow:0 0 0 4px rgba(53,196,132,.08)}
 .tb-k{gap:9px}
 .tb .tb-t{
-  background:linear-gradient(180deg,#0f2038 0%,#0c1b30 100%);
-  border-color:#203a5c;
+  background:linear-gradient(180deg,var(--t-card) 0%,color-mix(in srgb,var(--t-card) 93%,var(--t-card2)) 100%);
+  border-color:var(--t-line);
   border-radius:11px;
   padding:11px 12px;
   gap:7px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.018);
 }
-.tb .tb-t:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--c) 55%,#203a5c)}
+.tb .tb-t:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--c) 55%,var(--t-line));box-shadow:0 8px 20px rgba(0,30,80,.08)}
 .tb-ic{width:30px;height:30px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
 .tb-ic svg{width:18px;height:18px}
-.tb-tl{font-size:12px;letter-spacing:.06em;color:#b9cae0}
+.tb-tl{font-size:12px;letter-spacing:.06em;color:var(--t-tx2)}
 .tb-n b{font-size:35px;letter-spacing:-.025em}
 .tb-dl{font-size:11px}
 .tb-n small,.tb-pie{font-size:10px}
 .tb-sp{height:6px}
 .tb-sl{font-size:9px}
 .tb-c{
-  background:linear-gradient(180deg,#0e1f36,#0c1b2f);
-  border-color:#203a5c;
+  background:linear-gradient(180deg,var(--t-card),color-mix(in srgb,var(--t-card) 94%,var(--t-card2)));
+  border-color:var(--t-line);
   border-radius:11px;
   padding:12px;
   gap:9px;
 }
-.tb-c h4{font-size:13px;letter-spacing:.065em;color:#eef5ff;border-bottom:1px solid rgba(255,255,255,.055);padding-bottom:7px}
-.tb-c h4 span{font-size:9px;color:#8ea4c0}
+.tb-c h4{font-size:13px;letter-spacing:.065em;color:var(--t-tx);border-bottom:1px solid var(--t-line);padding-bottom:7px}
+.tb-c h4 span{font-size:9px;color:var(--t-mu)}
 .tb-nota{font-size:9px}
-.tb .tb-pe button,.tb .tb-ac button,.tb .tb-al button{background:#112541;border-color:#23405f;border-radius:9px}
-.tb .tb-pe button:hover,.tb .tb-ac button:hover{border-color:#456a92;background:#142a49}
+.tb .tb-pe button,.tb .tb-ac button,.tb .tb-al button{background:var(--t-card2);border-color:var(--t-line);border-radius:9px}
+.tb .tb-pe button:hover,.tb .tb-ac button:hover{border-color:color-mix(in srgb,var(--t-az) 50%,var(--t-line));background:color-mix(in srgb,var(--t-card2) 88%,var(--t-az))}
 .tb-fl{gap:2px}
 .tb .tb-fl button{padding-top:9px;padding-bottom:9px}
 .tb-fl b{font-size:27px}
@@ -816,7 +841,7 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
 .tb-ac small,.tb-ac em{font-size:9px}
 .tb-ac b{font-size:23px}
 .tb-pr{height:5px}
-.tb-chip{font-size:9px;padding:2px 7px;background:#0c1b30}
+.tb-chip{font-size:9px;padding:2px 7px;background:var(--t-card2)}
 .tb .tb-al button{grid-template-columns:72px minmax(0,1fr) 36px minmax(0,.9fr);font-size:10px;min-height:40px;padding:7px 8px}
 .tb-al .pr{font-size:9px}.tb-al b{font-size:19px}.tb-al em{font-size:9px}
 
@@ -836,6 +861,23 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
 :root[data-tema="oscuro"] tbody tr:hover td{background:#132943}
 :root[data-tema="oscuro"] .hb .tr{background:#172b45}
 :root[data-tema="oscuro"] .ritmo div,:root[data-tema="oscuro"] .ritmo-fila{background:#13263d;border-color:#223b5a}
+
+/* El Tablero de Gestión sigue el mismo selector claro/oscuro del portal */
+:root:not([data-tema="oscuro"]) .tb .tb-ic{color:#fff}
+:root:not([data-tema="oscuro"]) .tb .tb-fl button{color:#fff}
+:root:not([data-tema="oscuro"]) .tb .tb-sp{background:#e6edf5}
+:root:not([data-tema="oscuro"]) .tb .tb-pr{background:#e5ecf4}
+:root:not([data-tema="oscuro"]) .tb .tb-hb .tr{background:#e7edf4}
+:root:not([data-tema="oscuro"]) .tb .tb-sl,
+:root:not([data-tema="oscuro"]) .tb .tb-pie,
+:root:not([data-tema="oscuro"]) .tb .tb-nota{color:var(--t-mu)}
+:root:not([data-tema="oscuro"]) .tb .tb-hb span,
+:root:not([data-tema="oscuro"]) .tb .tb-dl2 span,
+:root:not([data-tema="oscuro"]) .tb .tb-tl2 span{color:var(--t-tx2)}
+:root:not([data-tema="oscuro"]) .tb .tb-al em{color:var(--t-mu)}
+:root:not([data-tema="oscuro"]) .tb .tb-al button:hover{background:#eef4fa}
+:root:not([data-tema="oscuro"]) .tb .tb-live i{box-shadow:0 0 0 4px rgba(35,137,93,.08)}
+:root[data-tema="oscuro"] .tb .tb-t:hover{box-shadow:none}
 
 /* Responsive ejecutivo */
 @media(max-width:1280px){
@@ -2537,9 +2579,14 @@ const REFRESCO_MIN = 5;
 let ULT_LECTURA = null;
 
 /* Colores de las series (validados para fondo oscuro y daltonismo) y de estado */
-const TB = {az:"#3987e5", nj:"#d95926", ag:"#12a594", vi:"#8e6ae0", gr:"#8fa3bf",
-            ok:"#2fbd7e", warn:"#fab219", bad:"#ff6b6b",
-            tx:"#f2f7ff", tx2:"#cbd9ef", mu:"#a3b6d2", ln:"#24395c", sp:"#1a2b45", card:"#10203a"};
+const TB = {az:"#2f7fd3", nj:"#c85e31", ag:"#168f80", vi:"#735fc7", gr:"#8292a6",
+            ok:"#23895d", warn:"#bf7d16", bad:"#c94343",
+            get tx(){return oscuro()?"#f2f7ff":"#17283d"},
+            get tx2(){return oscuro()?"#cbd9ef":"#435a73"},
+            get mu(){return oscuro()?"#a3b6d2":"#73859a"},
+            get ln(){return oscuro()?"#24395c":"#d9e3ee"},
+            get sp(){return oscuro()?"#1a2b45":"#e7edf4"},
+            get card(){return oscuro()?"#10203a":"#ffffff"}};
 const TB_SERIE = [TB.az, TB.nj, TB.ag, TB.vi];
 
 const tbSvg = d => `<svg viewBox="0 0 20 20" aria-hidden="true">${d}</svg>`;
@@ -2594,11 +2641,11 @@ function tbTile(o){
     <div class="tb-pie">${o.pie||""}</div>
   </button>`;
 }
-/* Ejes y base de los gráficos del tablero: siempre con la paleta oscura */
+/* Ejes y base de los gráficos del tablero: siguen el tema general del portal */
 function tbBase(){ return {
   textStyle:{fontFamily:"var(--body)",color:TB.mu}, animationDuration:400,
-  tooltip:{trigger:"axis",axisPointer:{type:"shadow"},backgroundColor:"#0c1a2e",borderColor:TB.ln,
-    textStyle:{color:TB.tx,fontSize:12},extraCssText:"box-shadow:0 8px 24px rgba(0,0,0,.4);border-radius:8px"} }}
+  tooltip:{trigger:"axis",axisPointer:{type:"shadow"},backgroundColor:oscuro()?"#0c1a2e":"#ffffff",borderColor:TB.ln,
+    textStyle:{color:TB.tx,fontSize:12},extraCssText:oscuro()?"box-shadow:0 8px 24px rgba(0,0,0,.4);border-radius:8px":"box-shadow:0 8px 24px rgba(0,30,80,.14);border-radius:8px"} }}
 const tbEjeMes = () => ({type:"category",data:MESES.map(m=>m.slice(0,3)),
   axisLine:{lineStyle:{color:TB.ln}},axisTick:{show:false},
   axisLabel:{color:(v,i)=>F.modo==="mes"&&i===F.mes-1?TB.tx:TB.mu,fontSize:11,fontWeight:500}});
