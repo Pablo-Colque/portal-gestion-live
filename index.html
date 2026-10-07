@@ -1460,6 +1460,112 @@ tbody tr:hover td,table tr:hover td{background:#f5f9fe}
   .mobile-shellbar,.mobile-nav-backdrop,.mobile-side-close,.mobile-nav-toggle,.mobile-filter-toggle{display:none!important}
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUTOSOL · VW — MASTER UI LAYER v10
+   CAPA UI / PRESENTACIÓN — NO ALTERA DATOS NI CONEXIONES
+   Tema sincronizado · responsive real · impresión/PDF ejecutivo · UX móvil.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 1) Navegación acompaña el tema */
+:root:not([data-tema="oscuro"]) .side{
+  background:linear-gradient(180deg,#fbfdff 0%,#f2f6fb 56%,#eaf1f8 100%)!important;
+  color:#16304f!important;border-right:1px solid #d6e0eb!important;
+  box-shadow:8px 0 28px rgba(0,30,80,.06)!important
+}
+:root:not([data-tema="oscuro"]) .side:before{color:#0b5cab!important;background:#fff!important;border-color:#cedbea!important}
+:root:not([data-tema="oscuro"]) .side .m1{color:#6d8199!important}
+:root:not([data-tema="oscuro"]) .side .m2{color:#001e50!important}
+:root:not([data-tema="oscuro"]) .side .pie{color:#72849a!important;border-color:#d5dfeb!important}
+:root:not([data-tema="oscuro"]) .nav button{color:#425a77!important;background:transparent!important;border-color:transparent!important}
+:root:not([data-tema="oscuro"]) .nav button:hover{color:#001e50!important;background:#e6eef7!important;border-color:#d5e0ec!important}
+:root:not([data-tema="oscuro"]) .nav button.on{
+  color:#fff!important;background:linear-gradient(135deg,#001e50,#0b5cab)!important;
+  border-color:#001e50!important;box-shadow:0 7px 18px rgba(0,30,80,.16)!important
+}
+:root:not([data-tema="oscuro"]) .nav .ic{color:inherit!important;background:rgba(15,111,220,.055)!important;border-color:rgba(15,111,220,.08)!important}
+:root:not([data-tema="oscuro"]) .nav button.on .ic{background:rgba(255,255,255,.14)!important;border-color:rgba(255,255,255,.18)!important}
+
+:root[data-tema="oscuro"] .side{
+  background:linear-gradient(180deg,#06101e 0%,#08182a 58%,#071522 100%)!important;
+  border-right:1px solid #1c3550!important
+}
+:root[data-tema="oscuro"] .nav button{color:#c3d3e7!important}
+:root[data-tema="oscuro"] .nav button:hover{background:#112943!important;border-color:#25445f!important;color:#f3f8ff!important}
+:root[data-tema="oscuro"] .nav button.on{background:linear-gradient(135deg,#173a62,#215182)!important;color:#fff!important;border-color:#315f8d!important}
+
+/* 2) Pulido ejecutivo sin alterar contenido */
+.head{contain:layout style}.card,.k,.a,.tb-c,.tb .tb-t{contain:layout style}
+.filt select,.filt input,.btn,.seg button,.btns button{touch-action:manipulation}
+.card h3,.tb-c h4{text-wrap:balance}.k .n,.big,.tb-n b{font-variant-numeric:tabular-nums lining-nums}
+.kpis{align-items:stretch}.k{height:100%}.card,.k,.tb-c,.tb .tb-t{backface-visibility:hidden}
+
+/* 3) Tablet/celular: menos costo visual y cero desborde general */
+@media(max-width:980px){
+  html,body{overflow-x:hidden!important;max-width:100%!important}body{min-width:0!important}
+  .main,.body,.panel,.panel.on{max-width:100%!important;min-width:0!important}
+  .head,.filt,.mobile-shellbar{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  .side{will-change:transform}.mobile-shellbar{isolation:isolate}.acts{overscroll-behavior-inline:contain}
+  .ech canvas,.ech svg{max-width:100%!important}
+  html.mobile-nav-open,html.mobile-nav-open body{overflow:hidden!important}
+  :root:not([data-tema="oscuro"]) .mobile-shellbar{
+    color:#001e50!important;background:linear-gradient(110deg,#fbfdff 0%,#f2f6fb 62%,#e9f1f9 100%)!important;
+    border-bottom:1px solid #d5dfeb!important;box-shadow:0 5px 18px rgba(0,30,80,.08)!important
+  }
+  :root:not([data-tema="oscuro"]) .mobile-menu-btn,
+  :root:not([data-tema="oscuro"]) .mobile-filter-btn{color:#001e50!important;background:#fff!important;border-color:#cfdbe9!important}
+  :root:not([data-tema="oscuro"]) .mobile-shellbrand span{color:#71849b!important}
+  :root:not([data-tema="oscuro"]) .mobile-side-close{color:#001e50!important;background:#fff!important;border-color:#cbd8e7!important}
+}
+@media(max-width:560px){
+  .head .acts .btn{font-size:11px!important;padding:7px 9px!important}
+  .filt select,.filt input{font-size:13px!important}.tb-c,.card{overflow:hidden}.chart-note{font-size:9px!important}
+}
+@media(max-width:380px){.head .acts{gap:4px!important}.head .acts .btn{font-size:10px!important;padding:6px 8px!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
+
+/* 4) Impresión/PDF: A4 apaisado, solo vista actual, siempre claro */
+@page{size:A4 landscape;margin:6mm}
+@media print{
+  html,body{width:100%!important;max-width:none!important;min-width:0!important;height:auto!important;overflow:visible!important;background:#fff!important;color:#10233f!important}
+  .side,.filt,.acts,.mobile-shellbar,.mobile-nav-backdrop,.mobile-side-close,.mobile-nav-toggle,.mobile-filter-toggle,.toast,.noprint,.login,.cargando{display:none!important}
+  .app,.main{display:block!important;width:100%!important;max-width:none!important;min-width:0!important;margin:0!important;padding:0!important;background:#fff!important;color:#10233f!important}
+  .head{display:block!important;min-height:0!important;margin:0 0 3mm!important;padding:0 0 2.5mm!important;background:#fff!important;border:0!important;border-bottom:1px solid #d8e1eb!important;box-shadow:none!important;color:#10233f!important}
+  .head>div:first-child:before{color:#0f6fdc!important}
+  h1{color:#001e50!important;font-size:20pt!important;line-height:1!important;margin:0!important}
+  .head .desc{color:#566b83!important;font-size:8.5pt!important;margin-top:2mm!important}
+
+  .panel{display:none!important}.panel.on{display:block!important}
+  #body{display:block!important;width:var(--print-width,100%)!important;max-width:none!important;min-width:0!important;margin:0!important;padding:0!important;zoom:var(--print-scale,1);transform-origin:top left!important;background:#fff!important;color:#10233f!important;overflow:visible!important;page-break-inside:avoid!important;break-inside:avoid-page!important}
+  :root[data-tema="oscuro"] body,:root[data-tema="oscuro"] .main,:root[data-tema="oscuro"] .body,:root[data-tema="oscuro"] .panel,:root[data-tema="oscuro"] .panel.on{background:#fff!important;color:#10233f!important}
+
+  .frase,.frase b,.k .n,.big,.aro-n,.chart-headline .metric{color:#001e50!important;text-shadow:none!important}
+  .sub,.k .d,.card h3 span,.big small,.aro-d,.ley{color:#66788f!important;text-shadow:none!important}
+  .k .l,.card h3,.hb .t,.aro-t{color:#3e5672!important;text-shadow:none!important}
+  .card,.k,.a,.ritmo-fila,.ritmo div,.tw{background:#fff!important;border-color:#cbd6e3!important;box-shadow:none!important;text-shadow:none!important}
+  table{background:#fff!important}th{position:static!important;background:#eef3f8!important;color:#304b69!important;border-color:#cbd6e3!important}td{background:#fff!important;color:#1d3552!important;border-color:#dfe6ee!important}tbody tr:nth-child(even) td{background:#f8fafc!important}
+
+  .tb{--t-bg:#fff!important;--t-card:#fff!important;--t-card2:#f3f6fa!important;--t-line:#cbd6e3!important;--t-tx:#17283d!important;--t-tx2:#435a73!important;--t-mu:#6f8195!important;--t-ok:#23895d!important;--t-warn:#a96f12!important;--t-bad:#b93d3d!important;background:#fff!important;color:#17283d!important;border:1px solid #cbd6e3!important;box-shadow:none!important}
+  .tb:before,.tb-live{display:none!important}
+  .tb-c,.tb .tb-t,.tb .tb-pe button,.tb .tb-ac button,.tb .tb-al button{background:#fff!important;color:#17283d!important;border-color:#cbd6e3!important;box-shadow:none!important}
+  .tb-c h4,.tb-tl,.tb-n b,.tb-pie b,.tb-dl2 b,.tb-tl2 b,.tb-ac b,.tb-pe b,.tb-al b{color:#17283d!important}
+  .tb-c h4 span,.tb-nota,.tb-pie,.tb-dl2 span,.tb-tl2 span,.tb-ac small,.tb-ac em,.tb-al em{color:#6f8195!important}
+  .tb-sp,.tb-pr,.tb-hb .tr{background:#e8eef4!important}
+
+  #body svg text,#body .ech svg text,#body .linechart svg text{fill:#304b69!important}
+  #body .linechart .grid{stroke:#dfe6ee!important}#body .linechart .axistext{fill:#657991!important}
+  .tw{max-height:none!important;overflow:visible!important}.tw table{min-width:0!important}
+  .ech,.exec-chart,.linechart,.cols{max-width:100%!important;overflow:visible!important}
+
+  .body{padding:0!important}.kpis{gap:5px!important;margin:6px 0 7px!important}.k{min-height:0!important;padding:7px 9px!important}
+  .k .n{font-size:22pt!important}.k .l{font-size:7.5pt!important;margin-top:2mm!important}.k .d{font-size:7pt!important}
+  .g{gap:6px!important;margin-bottom:6px!important}.card{padding:7px 9px!important;border-radius:6px!important}.card h3{font-size:7.5pt!important;padding-bottom:4px!important;margin-bottom:5px!important}
+  .tb{padding:6px!important;gap:5px!important;border-radius:6px!important}.tb-k,.tb-g{gap:5px!important}.tb .tb-t,.tb-c{padding:6px!important;gap:4px!important;border-radius:5px!important}
+  .tb-n b{font-size:22pt!important}.tb-c h4{font-size:8pt!important;padding-bottom:3px!important}.tb-pie,.tb-nota,.tb-n small,.tb-ac small,.tb-ac em,.tb-pe small,.tb-al em{font-size:6.5pt!important}
+  .card,.k,.a,.tb,.tb-c,.tb .tb-t,.ritmo-fila,.tw{break-inside:avoid!important;page-break-inside:avoid!important}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+}
+
 </style>
 </head>
 <body>
@@ -2716,6 +2822,213 @@ th{background:#EEF4FB;color:var(--vw);font-size:12px;text-transform:uppercase}
 @media(max-width:1100px){.kpis,.three,.two{grid-template-columns:1fr 1fr}.header-wrap{flex-direction:column;align-items:flex-start}.periodo{text-align:left}.donut-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.kpis,.three,.two{grid-template-columns:1fr}.barlbl{width:135px;font-size:12px}}
 @media print{body{background:#fff}nav{display:none}.view{display:block!important;page-break-before:always}.card{box-shadow:none}}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXECUTIVE THEME + PRINT CONTROL v9
+   1) Navegación lateral acompaña tema claro/oscuro.
+   2) Impresión/PDF siempre clara y legible.
+   3) El módulo actual se ajusta automáticamente a UNA sola hoja A4 apaisada.
+   No altera datos, cálculos, conexiones, endpoints ni filtros.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Navegación en TEMA CLARO ───────────────────────────────────────────── */
+:root:not([data-tema="oscuro"]) .side{
+  background:linear-gradient(180deg,#f8fbff 0%,#eef4fb 58%,#e7eff8 100%)!important;
+  color:#10233f!important;
+  border-right:1px solid #d4deea!important;
+  box-shadow:8px 0 28px rgba(0,30,80,.07)!important;
+}
+:root:not([data-tema="oscuro"]) .side:before{
+  color:#0b5cab!important;
+  background:#fff!important;
+  border-color:#cddbeb!important;
+}
+:root:not([data-tema="oscuro"]) .side .m1{color:#6c8099!important}
+:root:not([data-tema="oscuro"]) .side .m2{color:#001e50!important}
+:root:not([data-tema="oscuro"]) .nav button{
+  color:#435b78!important;
+  background:transparent!important;
+  border-color:transparent!important;
+}
+:root:not([data-tema="oscuro"]) .nav button:hover{
+  color:#001e50!important;
+  background:#e5eef8!important;
+  border-color:#d3e0ee!important;
+}
+:root:not([data-tema="oscuro"]) .nav button.on{
+  color:#fff!important;
+  background:linear-gradient(135deg,#001e50,#0b5cab)!important;
+  border-color:#001e50!important;
+  box-shadow:0 7px 18px rgba(0,30,80,.18)!important;
+}
+:root:not([data-tema="oscuro"]) .nav .ic{
+  color:inherit!important;
+  background:rgba(15,111,220,.06)!important;
+  border-color:rgba(15,111,220,.08)!important;
+}
+:root:not([data-tema="oscuro"]) .nav button.on .ic{
+  background:rgba(255,255,255,.13)!important;
+  border-color:rgba(255,255,255,.18)!important;
+}
+:root:not([data-tema="oscuro"]) .side .pie{
+  color:#74869c!important;
+  border-color:#d3deea!important;
+}
+:root:not([data-tema="oscuro"]) .mobile-side-close{
+  color:#001e50!important;
+  background:#fff!important;
+  border-color:#cbd8e7!important;
+  box-shadow:0 2px 8px rgba(0,30,80,.08)!important;
+}
+
+/* La barra móvil también acompaña el tema */
+@media(max-width:980px){
+  :root:not([data-tema="oscuro"]) .mobile-shellbar{
+    color:#001e50!important;
+    background:linear-gradient(110deg,#fbfdff 0%,#f1f6fb 62%,#e8f1fa 100%)!important;
+    border-bottom:1px solid #d4dfeb!important;
+    box-shadow:0 5px 18px rgba(0,30,80,.09)!important;
+  }
+  :root:not([data-tema="oscuro"]) .mobile-menu-btn,
+  :root:not([data-tema="oscuro"]) .mobile-filter-btn{
+    color:#001e50!important;
+    background:#fff!important;
+    border-color:#cdd9e7!important;
+  }
+  :root:not([data-tema="oscuro"]) .mobile-shellbrand span{color:#71849b!important}
+  :root:not([data-tema="oscuro"]) .mobile-nav-backdrop{background:rgba(6,24,48,.38)!important}
+}
+
+/* ── IMPRESIÓN / PDF: SIEMPRE CLARO + UNA HOJA ────────────────────────── */
+@media print{
+  @page{size:A4 landscape;margin:6mm}
+
+  html,body{
+    background:#fff!important;
+    color:#10233f!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    overflow:visible!important;
+  }
+  body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+
+  /* Solo contenido gerencial actual; sin navegación ni controles */
+  .side,.filt,.acts,.mobile-shellbar,.mobile-nav-backdrop,.mobile-side-close,
+  .mobile-nav-toggle,.mobile-filter-toggle,.toast,.noprint,.login,.cargando{
+    display:none!important;
+  }
+  .app,.main{
+    display:block!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+    color:#10233f!important;
+  }
+  .head{
+    display:block!important;
+    min-height:0!important;
+    margin:0 0 4mm!important;
+    padding:0 0 3mm!important;
+    background:#fff!important;
+    border:0!important;
+    border-bottom:1px solid #d8e1eb!important;
+    box-shadow:none!important;
+    color:#10233f!important;
+  }
+  .head>div:first-child:before{color:#0f6fdc!important}
+  h1{color:#001e50!important;font-size:22pt!important;line-height:1!important}
+  .head .desc{color:#566b83!important;font-size:9pt!important}
+
+  /* Escala dinámica colocada por beforeprint para que el módulo sea UNA hoja */
+  #body{
+    display:block!important;
+    width:var(--print-width,100%)!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:0!important;
+    zoom:var(--print-scale,1);
+    background:#fff!important;
+    color:#10233f!important;
+    overflow:visible!important;
+    page-break-inside:avoid!important;
+    break-inside:avoid-page!important;
+  }
+
+  /* Superficies genéricas */
+  .panel,.panel.on,.card,.k,.a,.ritmo-fila,.ritmo div,.tw,table{
+    background:#fff!important;
+    color:#10233f!important;
+    box-shadow:none!important;
+    text-shadow:none!important;
+  }
+  .card,.k,.a,.ritmo-fila,.ritmo div,.tw{
+    border-color:#ccd7e4!important;
+  }
+  .card h3,.frase,.frase b,.big,.k .n,.k .l,.k .d,
+  .hb .t,.hb .v,.aro-t,.aro-n,.aro-d{
+    color:#10233f!important;
+    text-shadow:none!important;
+  }
+  .sub,.card h3 span,.ley,.chart-note{color:#64748b!important}
+  th{background:#edf2f7!important;color:#334155!important;border-color:#cbd5e1!important}
+  td{background:#fff!important;color:#1e293b!important;border-color:#e2e8f0!important}
+  tbody tr:nth-child(even) td{background:#f8fafc!important}
+
+  /* Tablero de Gestión: en papel usa variables claras aunque la pantalla esté oscura */
+  .tb{
+    --t-bg:#ffffff!important;
+    --t-card:#ffffff!important;
+    --t-card2:#f4f7fb!important;
+    --t-line:#cfd9e6!important;
+    --t-tx:#10233f!important;
+    --t-tx2:#465b78!important;
+    --t-mu:#718198!important;
+    --t-az:#0f6fdc!important;
+    --t-nj:#c85b28!important;
+    --t-ag:#198754!important;
+    --t-vi:#7659c8!important;
+    --t-gr:#718198!important;
+    --t-ok:#198754!important;
+    --t-warn:#a86f00!important;
+    --t-bad:#b42318!important;
+    background:#fff!important;
+    color:#10233f!important;
+    border:1px solid #cfd9e6!important;
+    box-shadow:none!important;
+  }
+  .tb-c,.tb .tb-t,.tb .tb-pe button,.tb .tb-ac button,.tb .tb-al button{
+    background:#fff!important;
+    color:#10233f!important;
+    border-color:#cfd9e6!important;
+    box-shadow:none!important;
+  }
+  .tb-c h4,.tb-top b,.tb-tl,.tb-n b,.tb-pie b,.tb-pe b,.tb-ac b,.tb-al b{
+    color:#10233f!important;
+  }
+  .tb-c h4 span,.tb-top span,.tb-live,.tb-pie,.tb-nota,.tb-pe small,.tb-ac small,
+  .tb-ac em,.tb-al em,.tb-dl2 span,.tb-tl2 span,.tb-hb span,.tb-hb em{
+    color:#64748b!important;
+  }
+  .tb-sp,.tb-pr,.tb-hb .tr{background:#e7edf4!important}
+  .tb:before,.tb-live i{box-shadow:none!important}
+
+  /* ECharts renderiza SVG: forzar textos oscuros cuando se imprime desde modo oscuro */
+  .ech svg text,.exec-chart svg text,.linechart svg text,.tb svg text{
+    fill:#334155!important;
+  }
+  .ech,.exec-chart,.linechart{background:#fff!important}
+
+  /* Evitar que el navegador reparta el módulo en varias hojas */
+  #body,.panel,.panel.on{page-break-before:auto!important;page-break-after:auto!important}
+  .card,.k,.tb,.tb-c,.tb-t,.tw{page-break-inside:avoid!important;break-inside:avoid!important}
+}
+
 </style></head><body>
 <header><div class="header-wrap">
   <div>
@@ -3659,6 +3972,45 @@ function filtCanal(v){F.canal=v;$("fCanal").value=v;render()}
 function filtVend(v){F.vend=v;$("fVend").value=v;ir("entregas")}
 function limpiar(){F.mod=F.canal=F.vend="";["fMod","fCanal","fVend"].forEach(i=>$(i).value="");render()}
 function buscarTabla(inp,id){const q=inp.value.toLowerCase();document.querySelectorAll(`#${id} tr`).forEach((tr,i)=>{if(i)tr.style.display=tr.textContent.toLowerCase().includes(q)?"":"none"})}
+
+
+/* ═══ IMPRESIÓN EJECUTIVA v9 ════════════════════════════════════════════
+   Ajusta el módulo ACTUAL a una sola hoja A4 apaisada y fuerza tema claro
+   únicamente durante la impresión. No modifica datos ni lógica de negocio.
+   ═════════════════════════════════════════════════════════════════════════ */
+function prepararImpresionUnaPagina(){
+  const zona=document.getElementById("body");
+  const cab=document.querySelector(".head");
+  if(!zona)return;
+
+  // Limpiar una escala anterior antes de medir.
+  document.documentElement.style.setProperty("--print-scale","1");
+  document.documentElement.style.setProperty("--print-width","100%");
+
+  // A4 apaisado a 96 dpi, descontando márgenes y el encabezado ejecutivo.
+  const pxMm=96/25.4;
+  const anchoUtil=(297-12)*pxMm;
+  const altoPagina=(210-12)*pxMm;
+  const altoCab=Math.min(96,(cab?cab.scrollHeight:0)+18);
+  const altoUtil=Math.max(320,altoPagina-altoCab);
+
+  const ancho=Math.max(zona.scrollWidth,zona.getBoundingClientRect().width,1);
+  const alto=Math.max(zona.scrollHeight,zona.getBoundingClientRect().height,1);
+  let escala=Math.min(1,anchoUtil/ancho,altoUtil/alto);
+  if(!Number.isFinite(escala)||escala<=0)escala=1;
+
+  // Chrome/Edge soportan zoom en impresión; conservar un piso de seguridad.
+  escala=Math.max(0.12,Math.min(1,escala*0.985));
+  document.documentElement.style.setProperty("--print-scale",String(escala));
+  document.documentElement.style.setProperty("--print-width",(100/escala)+"%");
+}
+function limpiarAjusteImpresion(){
+  document.documentElement.style.removeProperty("--print-scale");
+  document.documentElement.style.removeProperty("--print-width");
+}
+window.addEventListener("beforeprint",prepararImpresionUnaPagina);
+window.addEventListener("afterprint",limpiarAjusteImpresion);
+
 // PDF: usa la impresión del navegador con destino "Guardar como PDF": mismo diseño,
 // texto seleccionable y sin librerías externas.
 function pdf(){
@@ -3676,5 +4028,24 @@ function descargar(){
 }
 if(localStorage.getItem(TOKEN_KEY))cargar(); else mostrarLogin("");
 </script>
+
+
+<script>
+/* CAPA UI / PRESENTACIÓN v10 — NO ALTERA DATOS NI CONEXIONES */
+(function(){
+  const mq=window.matchMedia('(max-width:980px)');
+  const nav=document.getElementById('mobileNavToggle');
+  const filtros=document.getElementById('mobileFiltersToggle');
+  function lock(){if(nav)document.documentElement.classList.toggle('mobile-nav-open',mq.matches&&nav.checked)}
+  if(nav){
+    nav.addEventListener('change',lock);
+    document.addEventListener('click',function(e){const b=e.target.closest('#nav button');if(b&&mq.matches){nav.checked=false;lock()}},{passive:true});
+  }
+  function viewport(){if(!mq.matches){if(nav)nav.checked=false;if(filtros)filtros.checked=false}lock()}
+  if(mq.addEventListener)mq.addEventListener('change',viewport);else if(mq.addListener)mq.addListener(viewport);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&nav&&nav.checked){nav.checked=false;lock()}});
+})();
+</script>
+
 </body>
 </html>
