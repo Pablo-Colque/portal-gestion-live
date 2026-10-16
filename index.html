@@ -46,6 +46,13 @@ body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:
 .nav .ic{width:20px;text-align:center}
 .nav .bdg{margin-left:auto;background:var(--bad);color:#fff;border-radius:99px;font-size:11px;font-weight:700;padding:0 7px}
 .side .pie{font-size:11px;color:#9fb3d1;border-top:1px solid rgba(255,255,255,.15);padding-top:10px}
+/* Sello del pie. Dice SOLO lo que es verificable: la conexión es HTTPS, la sesión
+   va firmada y vence, y por acá no viajan datos de clientes. Nada decorativo:
+   si alguien pregunta por cualquiera de los tres, hay con qué contestar. */
+.sellos{display:flex;flex-direction:column;gap:5px;margin-top:9px}
+.sello{display:flex;align-items:center;gap:7px;font-size:10.5px;line-height:1.25;color:#9fb3d1}
+.sello i{width:14px;height:14px;flex:none;border-radius:50%;display:grid;place-items:center;
+  font-style:normal;font-size:8px;font-weight:700;background:rgba(47,189,126,.18);color:#4ddba0}
 
 /* Contenido */
 .main{min-width:0}
@@ -2096,14 +2103,22 @@ const HOY_TXT = (() => { const h = new Date();
    alcanza para darla por ida: tiene que tener además la fecha de salida cargada. */
 const CANAL_FINAL = ["TRADICIONAL", "PLANES", "CORPORATIVA", "PARTICULAR"];
 const canalFinal = t => CANAL_FINAL.some(c => t.indexOf(c) >= 0);
+/* CAPA UI / PRESENTACIÓN — NO ALTERA DATOS NI CONEXIONES
+   Una unidad que se entrega HOY todavía está en el predio. Pablo cuenta a la mañana
+   y el auto está ahí: se lo lleva el cliente más tarde. Antes el tablero la
+   descontaba apenas aparecía la fecha, y por eso daba una unidad menos que el
+   conteo a mano. Hoy sigue ocupando lugar, y se descuenta en "las que salen".
+   Por eso las dos comparaciones son estrictas: < y no <=. */
+const saleHoy = u => (u.fSalida && u.fSalida === HOY_TXT) ||
+                     (u.fEnt && u.fEnt === HOY_TXT && canalFinal(_up(u.tipo)));
 const yaSalio = u => {
-  if (u.fSalida && u.fSalida <= HOY_TXT) return true;       // salió del predio
+  if (u.fSalida && u.fSalida < HOY_TXT) return true;        // salió del predio
   // La FECHA DE ENTREGA de REC. no es un dato propio: la trae de la hoja ENTR. con un
   // BUSCARX, así que las dos dicen siempre lo mismo. Cuando una unidad vuelve —del
   // mayorista, de un viaje que no se concretó— la entrega se saca de ENTR. y REC. se
   // vacía sola. Sin fecha en ninguna de las dos, la unidad está en el predio.
   if (!u.fEnt) return false;
-  if (u.fEnt > HOY_TXT) return false;             // la entrega es de mañana en adelante
+  if (u.fEnt >= HOY_TXT) return false;            // se entrega hoy o más adelante: todavía está
   return canalFinal(_up(u.tipo));
 };
 /* Depósitos y sucursales propias de Salta: los destinos que SIAC escribe empezando
@@ -2139,12 +2154,35 @@ function techo(){
   const demo = marcar(UNI.filter(u => esDemo(u) && !esInmovil(u)))
     .concat(DEMOS.filter(i => !visto[i]).map(i => ({ int: i, modelo: "—" })));
 
-  const vivas = UNI.filter(u => !esInmovil(u) && !esDemo(u) &&
+  /* CAPA UI / PRESENTACIÓN — NO ALTERA DATOS NI CONEXIONES
+     UNA SOLA DEFINICIÓN DE "VIENE EN CAMINO", para todo el tablero.
+     La verdad de qué está viniendo la tiene la hoja REC., no SIAC: Pablo escribe
+     "EN VIAJE", "FURLONG" o "TRAER DE SALTA" apenas se entera, y SIAC se entera
+     después. La tarjeta de Flujo de Unidades ya leía de ahí; el techo leía de
+     STOCK HOY y por eso decía 0 mientras la otra decía 3, con las dos a la vista
+     en la misma pantalla.
+     Desde acá las dos leen la misma lista. La regla es una sola y se aplica en los
+     dos sentidos: si REC. dice que viene, NO está en el predio todavía (sale de
+     vivas, no ocupa techo) y SÍ cuenta en las que van a entrar. */
+  const VIENE = {};
+  (typeof VIAJE !== "undefined" ? VIAJE : []).forEach(v => {
+    if (v && v.int) VIENE[String(v.int).trim()] = v;
+  });
+  const estaViniendo = u => !!VIENE[String(u.int).trim()];
+  /* De Salta son las que Pablo marcó "TRAER DE ..."; el resto viene de fábrica. */
+  const deSalta = v => String(v.estado || "").toUpperCase().indexOf("TRAER DE") >= 0;
+  const vienenSalta  = Object.keys(VIENE).filter(i => deSalta(VIENE[i]));
+  const vienenFabrica = Object.keys(VIENE).filter(i => !deSalta(VIENE[i]));
+
+  const vivas = UNI.filter(u => !esInmovil(u) && !esDemo(u) && !estaViniendo(u) &&
                                 !yaSalio(u) && (u.recib || !u.destino));
   const yaAca = vivas.filter(u => !u.destino && u.recib && esDeJujuy(u));
   const ocupan   = vivas.filter(enLomas).concat(yaAca);
   const salon    = vivas.filter(enSalon);
   const sinAlta  = vivas.filter(u => !u.destino && !u.recib && esDeJujuy(u));
+  /* Las que SIAC no dio de alta y que REC. tampoco tiene marcadas: se suman a las
+     que vienen, pero sin contarlas dos veces. */
+  const sinAltaExtra = sinAlta.filter(u => !estaViniendo(u));
 
   /* De las que están en Salta, las que se traen YA son las facturadas con venta de
      Jujuy: esas Pablo se las pide a logística. Las que son de Jujuy pero todavía no
@@ -2167,24 +2205,41 @@ function techo(){
      facturada con venta de sucursal Salta se va igual, haya sacado el dominio o no
      —hay que sacarla del salón y reemplazarla—. Las demás facturadas también van a
      salir, pero sin fecha, así que no se descuentan. */
-  const porSalir = ocupan.filter(u => u.fact && (u.pat || u.sucVenta === "Salta"));
+  /* CAPA UI / PRESENTACIÓN — NO ALTERA DATOS NI CONEXIONES
+     Se suman las que se entregan HOY. Ahora siguen contando bajo techo —porque a la
+     mañana el auto está—, así que si no se las restara acá la proyección quedaría
+     inflada en esas mismas unidades. */
+  const porSalir = ocupan.filter(u => (u.fact && (u.pat || u.sucVenta === "Salta")) || saleHoy(u));
   const salenLuego = ocupan.filter(u => u.fact && !u.pat && u.sucVenta !== "Salta");
   const paraSalta = ocupan.concat(salon).filter(u => u.fact && u.sucVenta === "Salta");
   /* De las que vienen de fábrica, las que ya tienen fecha estimada de llegada: esas
      son las que pueden entrar antes de una tormenta y hay que tenerlas en cuenta. */
-  const conFecha = sinAlta.filter(u => u.llega).sort((a, b) => a.llega < b.llega ? -1 : 1);
+  /* CAPA UI / PRESENTACIÓN — NO ALTERA DATOS NI CONEXIONES
+     La fecha estimada de llegada la tiene la hoja REC., no SIAC. Antes esto salía
+     de sinAlta y quedaba vacío justo para las que sí tenían fecha. */
+  const conFecha = Object.keys(VIENE).map(i => VIENE[i]).filter(v => v.f)
+    .concat(sinAltaExtra.filter(u => u.llega).map(u => ({ f: u.llega })))
+    .sort((a, b) => a.f < b.f ? -1 : 1);
 
   /* Lo que va a entrar con fecha: las de fábrica más las que ya se pidieron a Salta.
      Las otras facturadas que están allá van a venir, pero mientras no se las pidas a
      logística no tienen fecha, así que no inflan la proyección. */
-  const entran   = sinAlta.length + pedidas.length;
+  /* CAPA UI / PRESENTACIÓN — NO ALTERA DATOS NI CONEXIONES
+     Las que entran son, exactamente, las que REC. dice que están viniendo: el mismo
+     número que muestra Flujo de Unidades. Se suman las de STOCK HOY sin alta que no
+     estén ya en esa lista, para no perder ninguna ni contarla dos veces. */
+  const entran   = Object.keys(VIENE).length + sinAltaExtra.length;
   /* El techo lo ocupan las que están a la venta MÁS las inmovilizadas: el lugar que
      ocupa una unidad trabada judicialmente es igual de real que el de una por vender. */
   const bajoTecho = ocupan.length + inmovil.length;
   const proy     = bajoTecho + entran - porSalir.length;
   const bruto    = bajoTecho + entran;
   return {
-    ocupan, salon, demo, sinAlta, enSalta, pedidas, porPedir, porSalir, entran, proy, bruto, salaLuego, salenLuego, yaAca, paraSalta, conFecha, proxima: conFecha.length ? conFecha[0].llega : null,
+    ocupan, salon, demo, sinAlta, enSalta, pedidas, porPedir, porSalir, entran, proy, bruto, salaLuego, salenLuego, yaAca, paraSalta, conFecha, proxima: conFecha.length ? conFecha[0].f : null,
+    /* CAPA UI / PRESENTACIÓN — el desglose de las que vienen, para que el texto de
+       la tarjeta diga los mismos números que el total. */
+    viene: VIENE, nSalta: vienenSalta.length,
+    nFabrica: vienenFabrica.length + sinAltaExtra.length,
     fisicas: ocupan.length + salon.length + inmovil.length,
     saltaConDominio: porPedir.filter(u => u.pat),
     inmovil, bajoTecho,
@@ -2219,17 +2274,17 @@ function tarjetaTecho(){
     <p class="sub" style="margin:8px 0 12px">${bajada}</p>
     <div class="al">
       <div class="a n"><i></i><div><b>${T.ocupan.length} a la venta, ocupando lugar hoy</b>
-        <p>Unidades en el depósito de Las Lomas que todavía no salieron del predio.${T.yaAca.length ? ` Incluye ${T.yaAca.length} ya recibidas pero sin alta en SIAC: están acá igual.` : ""}${T.porSalir.length ? ` De esas, ${T.porSalir.length} ya tienen fecha: patentadas, que se entregan dentro de la semana, o facturadas con venta de sucursal Salta, que hay que sacar y reemplazar.` : ""}${T.salenLuego.length ? ` Otras ${T.salenLuego.length} están vendidas pero sin patentar, así que no se descuentan todavía.` : ""}</p></div></div>
+        <p>Unidades en el depósito de Las Lomas que todavía no salieron del predio.${T.yaAca.length ? ` Incluye ${T.yaAca.length} ya recibidas pero sin alta en SIAC: están acá igual.` : ""}${T.porSalir.length ? ` De esas, ${T.porSalir.length} ya tienen fecha de salida: patentadas que se entregan dentro de la semana, facturadas con venta de sucursal Salta que hay que sacar y reemplazar, y las que se entregan hoy, que esta mañana todavía están acá pero a la noche ya no.` : ""}${T.salenLuego.length ? ` Otras ${T.salenLuego.length} están vendidas pero sin patentar, así que no se descuentan todavía.` : ""}</p></div></div>
       <div class="a ${T.inmovil.length ? "w" : "n"}"><i></i><div><b>${T.inmovil.length} inmovilizadas, ocupando techo sin poder venderse</b>
         <p>Unidades que el cliente nunca retiró, por causas judiciales y casos parecidos. Están bajo llave y bajo techo: no entran en el stock disponible, pero el lugar que ocupan es real y no se libera. Son ${T.inmovil.length} de los ${T.cupos} lugares, inmovilizados por tiempo indefinido.</p></div></div>
       <div class="a n"><i></i><div><b>${T.salon.length + T.demo.length} en el predio sin ocupar techo</b>
         <p>${T.salon.length} en el salón de ventas, adentro del edificio${T.demo.length ? `, y ${T.demo.length} ${T.demo.length > 1 ? "unidades demo, que se prestan" : "unidad demo, que se presta"} a los clientes para probar` : ""}. Están disponibles para la venta, pero no compiten por los ${T.cupos} lugares. Contando todo —las del depósito, el salón y las inmovilizadas— hay ${T.fisicas} unidades en el predio.</p></div></div>
-      <div class="a ${T.sinAlta.length ? "w" : "n"}"><i></i><div><b>${T.sinAlta.length} por llegar de fábrica</b>
-        <p>Todavía sin alta en SIAC: cuando se les da el alta aparecen en Las Lomas.${T.conFecha.length ? ` ${T.conFecha.length} ya tienen fecha estimada de llegada${T.proxima ? `, la primera el ${fdm(T.proxima)}` : ""} — esas son las que hay que mirar si se viene granizo.` : ""}</p></div></div>
-      <div class="a ${T.pedidas.length ? "w" : "n"}"><i></i><div><b>${T.pedidas.length} pedida${T.pedidas.length === 1 ? "" : "s"} a Salta<span style="font-weight:400;color:var(--mute)">${T.porPedir.length ? ` · ${T.porPedir.length} más para pedir` : ""}</span></b>
-        <p>${T.pedidas.length ? `Marcadas “TRAER DE SALTA” en la hoja REC.: el traslado ya está pedido, así que entran en la proyección.` : "Ninguna pedida todavía."}${T.porPedir.length ? ` Hay ${T.porPedir.length} más facturadas con venta de Jujuy paradas allá, que todavía hay que pedirle a logística.${T.saltaConDominio.length ? ` De esas, ${T.saltaConDominio.length} ya ${T.saltaConDominio.length > 1 ? "tienen" : "tiene"} dominio: ${T.saltaConDominio.length > 1 ? "van" : "va"} primero.` : ""} Sin pedido no tienen fecha, así que no suman a la proyección.` : ""}${T.salaLuego.length ? ` Y ${T.salaLuego.length} de Jujuy allá sin vender.` : ""}</p></div></div>
+      <div class="a ${T.nFabrica ? "w" : "n"}"><i></i><div><b>${T.nFabrica} por llegar de fábrica</b>
+        <p>Marcadas “EN VIAJE” o “FURLONG” en la hoja REC., o todavía sin alta en SIAC.${T.conFecha.length ? ` ${T.conFecha.length} ya ${T.conFecha.length > 1 ? "tienen" : "tiene"} fecha estimada de llegada${T.proxima ? `, la primera el ${fdm(T.proxima)}` : ""} — esas son las que hay que mirar si se viene granizo.` : " Sin fecha estimada todavía."}</p></div></div>
+      <div class="a ${T.nSalta ? "w" : "n"}"><i></i><div><b>${T.nSalta} pedida${T.nSalta === 1 ? "" : "s"} a Salta<span style="font-weight:400;color:var(--mute)">${T.porPedir.length ? ` · ${T.porPedir.length} más para pedir` : ""}</span></b>
+        <p>${T.nSalta ? `Marcadas “TRAER DE SALTA” en la hoja REC.: el traslado ya está pedido, así que entran en la proyección.` : "Ninguna pedida todavía."}${T.porPedir.length ? ` Hay ${T.porPedir.length} más facturadas con venta de Jujuy paradas allá, que todavía hay que pedirle a logística.${T.saltaConDominio.length ? ` De esas, ${T.saltaConDominio.length} ya ${T.saltaConDominio.length > 1 ? "tienen" : "tiene"} dominio: ${T.saltaConDominio.length > 1 ? "van" : "va"} primero.` : ""} Sin pedido no tienen fecha, así que no suman a la proyección.` : ""}${T.salaLuego.length ? ` Y ${T.salaLuego.length} de Jujuy allá sin vender.` : ""}</p></div></div>
     </div>
-    <p class="sub" style="margin-top:10px">${T.ocupan.length} a la venta + ${T.inmovil.length} inmovilizadas = ${T.bajoTecho} bajo techo hoy. Más ${T.entran} por entrar (${T.sinAlta.length} de fábrica y ${T.pedidas.length} de Salta) − ${T.porSalir.length} por salir = <b>${T.proy}</b>. Lo que pasa de ${T.cupos} va al fondo del predio, que no está bajo techo.${CUPOS_MOTOS?` Quedan ${CUPOS_MOTOS} lugares más prestados para las motos del personal: se pueden pedir si se viene una granizada.`:""}</p>
+    <p class="sub" style="margin-top:10px">${T.ocupan.length} a la venta + ${T.inmovil.length} inmovilizadas = ${T.bajoTecho} bajo techo hoy. Más ${T.entran} por entrar (${T.nFabrica} de fábrica y ${T.nSalta} de Salta) − ${T.porSalir.length} por salir = <b>${T.proy}</b>. Lo que pasa de ${T.cupos} va al fondo del predio, que no está bajo techo.${CUPOS_MOTOS?` Quedan ${CUPOS_MOTOS} lugares más prestados para las motos del personal: se pueden pedir si se viene una granizada.`:""}</p>
   </div>`;
 }
 
@@ -2982,7 +3037,7 @@ th{background:#EEF4FB;color:var(--vw);font-size:12px;text-transform:uppercase}
     <div class="card"><h2>Stock por modelo</h2><div id="stockModelo"></div></div>`}
     <div class="card"><h2>Lectura stock</h2>
       <p class="insight">El stock cierra en ${D.stock} unidades con un ${D.ctrl}% de control periódico. Se registran ${D.ok} unidades OK para entregar y ${D.mal} con alguna novedad. El estado operativo alcanza el ${pct(D.ok,D.stock)}%.</p>
-      <p class="insight" style="margin-top:12px"><b>Capacidad bajo techo:</b> el depósito de Las Lomas tiene ${D.techo.cupos} lugares cubiertos y hoy hay ${D.techo.ocupan.length} unidades ocupándolos. Están por entrar ${D.techo.entran} —${D.techo.sinAlta.length} desde fábrica y ${D.techo.enSalta.length} a trasladar desde Salta— y van a salir ${D.techo.porSalir.length} ya facturadas, lo que proyecta <b>${D.techo.proy} unidades</b>.${D.techo.sobran?` Eso deja ${D.techo.sobran} unidades fuera de la cubierta, en la playa compartida del fondo del predio, con la exposición a granizo que eso implica.`:" La capacidad cubierta alcanza para el ingreso previsto."}</p>
+      <p class="insight" style="margin-top:12px"><b>Capacidad bajo techo:</b> el depósito de Las Lomas tiene ${D.techo.cupos} lugares cubiertos y hoy hay ${D.techo.ocupan.length} unidades ocupándolos. Están por entrar ${D.techo.entran} —${D.techo.nFabrica} desde fábrica y ${D.techo.nSalta} a trasladar desde Salta— y van a salir ${D.techo.porSalir.length} ya facturadas, lo que proyecta <b>${D.techo.proy} unidades</b>.${D.techo.sobran?` Eso deja ${D.techo.sobran} unidades fuera de la cubierta, en la playa compartida del fondo del predio, con la exposición a granizo que eso implica.`:" La capacidad cubierta alcanza para el ingreso previsto."}</p>
     </div>
   </div>
   <div class="section-footer">${pie}</div>
@@ -3641,7 +3696,7 @@ async function refrescoSilencioso(){
     if (!j.ok) { if (j.error === "SIN_AUTORIZACION") cerrarSesion(); return }
     const f = {...F};
     DATA = j.datos; prepararDatos(); Object.assign(F, f); ULT_LECTURA = new Date();
-    $("pie").innerHTML = `Datos al ${fdia(ULT)}<br>Generado ${DATA.generado}<br>Fuente: libro PABLO 2016`;
+    $("pie").innerHTML = pieLateral();
     armarNav();
     if (actual === "tablero") { const y = window.scrollY; render(); window.scrollTo(0, y) }
   } catch (ex) { console.warn("[Gestión] No se pudo actualizar solo, se reintenta en el próximo ciclo:", ex) }
@@ -3681,7 +3736,7 @@ function init(){
   $("fCanal").onchange=e=>{F.canal=e.target.value;render()};
   $("fVend").onchange=e=>{F.vend=e.target.value;render()};
   document.querySelectorAll("#modo button").forEach(b=>b.onclick=()=>{F.modo=b.dataset.m;document.querySelectorAll("#modo button").forEach(x=>x.classList.toggle("on",x===b));$("fMes").style.display=F.modo==="mes"?"":"none";render()});
-  $("pie").innerHTML=`Datos al ${fdia(ULT)}<br>Generado ${DATA.generado}<br>Fuente: libro PABLO 2016`;
+  $("pie").innerHTML=pieLateral();
   try{aplicarTema(localStorage.getItem("pdiTema")||"claro")}catch(e){}
   armarNav(); render();
 }
@@ -3723,6 +3778,15 @@ async function login(){
     else{console.error("[Gestión] Error de login:",ex);err.textContent="No se pudo conectar. Intentá de nuevo en unos minutos."}
     pass.value=""; pass.focus();
   }finally{btn.disabled=false}
+}
+/* El pie de la barra lateral. Un solo lugar para los dos sitios donde se arma. */
+function pieLateral(){
+  return `Datos al ${fdia(ULT)}<br>Generado ${DATA.generado}<br>Fuente: libro PABLO 2016
+    <div class="sellos">
+      <div class="sello" title="El tablero y el servidor viajan por HTTPS: nadie puede leer los datos en el camino."><i>✓</i>Conexión cifrada (HTTPS)</div>
+      <div class="sello" title="La sesión se abre con clave y queda firmada por el servidor. Vence a las 12 horas y hay que entrar de nuevo."><i>✓</i>Sesión firmada · vence en 12 h</div>
+      <div class="sello" title="Por el tablero no viajan nombres, teléfonos ni documentos. Solo interno, modelo, fechas e importes del sector."><i>✓</i>Sin datos de clientes</div>
+    </div>`;
 }
 function cerrarSesion(msg){
   localStorage.removeItem(TOKEN_KEY); DATA=null;
