@@ -1784,6 +1784,13 @@ function sets(){
     ac:ACC.filter(r=>inPer(r.f)), ap:ACP.filter(r=>inPer(r.f)), apA:ACP.filter(r=>inPerA(r.f)),
     cm:CMV.filter(r=>inPer(r.f)&&okCmv(r)), cmA:CMV.filter(r=>inPerA(r.f)&&okCmv(r)),
     sal:SALON.filter(r=>inPer(r.f)&&okEnt(r)),
+    /* CAPA UI / PRESENTACIÓN — NO ALTERA DATOS NI CONEXIONES
+       Recupero del seguro, con el mismo criterio que el resto del tablero: el mes
+       es el de la FECHA DE FACTURACIÓN AL SEGURO, no el del reclamo. Un siniestro
+       reclamado en septiembre y facturado en octubre cuenta en octubre, que es
+       cuando entra la plata. El filtro de modelo aplica; el de canal y vendedor no,
+       porque la hoja del seguro no trae esos datos. */
+    sg:SEG.filter(r=>inPer(r.f)&&okMod(r)), sgA:SEG.filter(r=>inPerA(r.f)&&okMod(r)),
     st:STK.filter(okMod)
   };
 }
@@ -2497,6 +2504,165 @@ MOD.accesorios={ic:"🧰",t:"Accesorios",d:"Facturación y colocación, por fech
     <div class="card"><h3>Los 25 accesorios más colocados <span>el tamaño es la cantidad</span></h3>${treemap(items)}</div>
   </div>
   <p class="sub">Facturación: solo las OR de accesorios abiertas por Javier Reynoso o por Pablo; la hoja OR trae las de todo el taller. Los filtros de modelo, canal y vendedor no aplican acá: la hoja ACC. no trae esos datos por trabajo.</p>`;
+}};
+
+/* ═══════════════════════════════════════════════════════════════════
+   CAPA UI / PRESENTACIÓN — NO ALTERA DATOS NI CONEXIONES
+   MÓDULO SEGURO · recupero de siniestros
+
+   Hasta ahora el seguro era una tarjeta del tablero que llevaba al informe.
+   Acá tiene pantalla propia, con el mismo criterio que el resto: el mes es el
+   de la FECHA DE FACTURACIÓN AL SEGURO, no el del reclamo. Un siniestro
+   reclamado en septiembre y facturado en octubre entra en octubre, que es
+   cuando entra la plata.
+
+   La pregunta que contesta esta pantalla no es "cuánto recuperamos" sino
+   "por qué el número da lo que da". La ganancia es el resultado; la tasa de
+   aprobación y el corte por proveedor son la causa.
+   ═══════════════════════════════════════════════════════════════════ */
+MOD.seguro={ic:"🛡️",t:"Seguro",d:"Recupero de siniestros · por fecha de facturación al seguro",r(S){
+  const sg=S.sg, sgA=S.sgA;
+  const sum=(a,k)=>a.reduce((s,r)=>s+(r[k]||0),0);
+  /* En las tarjetas, un "$ 23.615.858" no entra y se corta. De un millón para
+     arriba se muestra en millones; abajo, el peso exacto. El número exacto
+     siempre está en las tablas y en el globo de cada gráfico. */
+  const cifra=n=>Math.abs(n)>=1e6?mill(n):pesos(n);
+  const res=sum(sg,"gan"), resA=sum(sgA,"gan");
+  const rec=sum(sg,"reclamado"), apr=sum(sg,"aprobado");
+  const recA=sum(sgA,"reclamado"), aprA=sum(sgA,"aprobado");
+  const tsa=rec?Math.round(apr/rec*100):null;
+  const tsaA=recA?Math.round(aprA/recA*100):null;
+  const rojos=sg.filter(r=>r.gan<0);
+  const perdido=sum(rojos,"gan");
+  const colRes=res>=0?"var(--ok)":"var(--bad)";
+
+  /* Si todavía no llegó nada, no se dibuja nada: se explica qué falta correr. */
+  if(!SEG.length) return `<div class="card"><h3>Sin datos del seguro</h3>
+    <p class="sub">El recupero llega desde el libro <b>SEGURO 2025.xlsx</b>, que sube solo
+    al guardar el Excel pero como mucho dos veces por día. Si nunca llegó, corré
+    <b>EnviarSeguro</b> a mano (Alt+F8) — esa versión sí avisa si algo falla.</p></div>`;
+
+  /* Qué tan fresco es el dato. El envío automático va en silencio: si falla, nadie
+     se entera. Esto lo pone a la vista. */
+  const ultimo=SEG.map(r=>r.f).filter(Boolean).sort().pop()||"";
+  const diasViejo=ultimo?Math.round((HOY-new Date(ultimo+"T00:00:00"))/864e5):null;
+
+  CSV=()=>[["Fecha facturación","Fecha reclamo","Modelo","Daño","Proveedor","Estado","Reclamado","Aprobado","Resultado"],
+    ...[...sg].sort((a,b)=>a.gan-b.gan).map(r=>[r.f,r.fReclamo||"",r.mod,r.dano,r.prov,r.estado,r.reclamado,r.aprobado,r.gan])];
+
+  /* ── Series del año, mes a mes ───────────────────────────────────── */
+  const gan=new Array(12).fill(0), rcl=new Array(12).fill(0), apb=new Array(12).fill(0), cnt=new Array(12).fill(0);
+  SEG.filter(okMod).forEach(r=>{ if(!r.f||+r.f.slice(0,4)!==F.anio)return;
+    const m=+r.f.slice(5,7)-1;
+    gan[m]+=r.gan; rcl[m]+=r.reclamado||0; apb[m]+=r.aprobado||0; cnt[m]++; });
+  const sinDato=m=>!cnt[m];
+  const ganV=gan.map((v,m)=>sinDato(m)?null:v);
+  const rclV=rcl.map((v,m)=>sinDato(m)?null:v);
+  const apbV=apb.map((v,m)=>sinDato(m)?null:v);
+
+  const c=C();
+  const barrasFirmadas=(datos,h=260)=>chart({...baseOpt(),
+    tooltip:{...baseOpt().tooltip,formatter:p=>{const x=p[0];
+      return x.value===null?`${x.name}<br>sin reclamos`:`${x.name}<br><b>${pesos(x.value)}</b>`}},
+    xAxis:{type:"category",data:MESES.map(m=>m.slice(0,3)),...ejeX()},
+    yAxis:{type:"value",...ejeY(),axisLabel:{...ejeY().axisLabel,formatter:v=>Math.abs(v)>=1e6?(v/1e6).toFixed(1)+"M":Math.round(v/1000)+"k"}},
+    series:[{type:"bar",data:datos,barMaxWidth:30,
+      itemStyle:{color:p=>p.value<0?"#c0392b":"#1f8a5b",borderRadius:p=>p.value<0?[0,0,4,4]:[4,4,0,0]}}]
+  },h);
+
+  const recVsApr=(h=260)=>chart({...baseOpt(),
+    legend:{bottom:0,icon:"roundRect",itemWidth:10,itemHeight:10,textStyle:{fontSize:11,color:c.mute}},
+    grid:{left:8,right:16,top:16,bottom:30,containLabel:true},
+    tooltip:{...baseOpt().tooltip,formatter:p=>p.map(x=>`${x.marker}${x.seriesName}: <b>${x.value===null?"—":pesos(x.value)}</b>`).join("<br>")},
+    xAxis:{type:"category",data:MESES.map(m=>m.slice(0,3)),...ejeX()},
+    yAxis:{type:"value",...ejeY(),axisLabel:{...ejeY().axisLabel,formatter:v=>(v/1e6).toFixed(1)+"M"}},
+    series:[
+      {name:"Reclamado",type:"bar",data:rclV,barMaxWidth:18,itemStyle:{color:c.barra2,borderRadius:[3,3,0,0]}},
+      {name:"Aprobado",type:"bar",data:apbV,barMaxWidth:18,itemStyle:{color:c.barra,borderRadius:[3,3,0,0]}}]
+  },h);
+
+  /* ── Corte por proveedor: acá está la explicación del número ──────── */
+  const porProv={};
+  sg.forEach(r=>{const k=r.prov||"Sin proveedor";
+    (porProv[k]=porProv[k]||{n:0,gan:0,rec:0,apr:0});
+    porProv[k].n++; porProv[k].gan+=r.gan; porProv[k].rec+=r.reclamado||0; porProv[k].apr+=r.aprobado||0;});
+  const provs=Object.entries(porProv).sort((a,b)=>a[1].gan-b[1].gan);
+
+  const barrasProv=(h=240)=>{
+    if(!provs.length)return '<div class="vacio">Sin datos.</div>';
+    return chart({...baseOpt(),
+      grid:{left:8,right:60,top:10,bottom:10,containLabel:true},
+      tooltip:{...baseOpt().tooltip,formatter:p=>`${p[0].name}<br><b>${pesos(p[0].value)}</b> en ${porProv[p[0].name].n} reclamo${porProv[p[0].name].n>1?"s":""}`},
+      xAxis:{type:"value",...ejeY(),axisLabel:{...ejeY().axisLabel,formatter:v=>Math.abs(v)>=1e6?(v/1e6).toFixed(1)+"M":Math.round(v/1000)+"k"}},
+      yAxis:{type:"category",data:provs.map(p=>p[0]),...ejeX()},
+      series:[{type:"bar",data:provs.map(p=>p[1].gan),barMaxWidth:24,
+        label:{show:true,position:"right",color:c.mute,fontSize:11,formatter:p=>pesos(p.value)},
+        itemStyle:{color:p=>p.value<0?"#c0392b":"#1f8a5b",borderRadius:3}}]
+    },h);
+  };
+
+  return `${diasViejo!==null&&diasViejo>10?`<div class="card" style="border-left:3px solid var(--warn);margin-bottom:14px">
+    <h3>El dato del seguro está atrasado <span>${diasViejo} días</span></h3>
+    <p class="sub" style="margin:0">La última facturación cargada es del <b>${fdia(ultimo)}</b>. El libro del
+    seguro sube solo al guardar el Excel, pero como mucho dos veces por día, y el envío
+    automático <b>va en silencio</b>: si falla, no avisa. Corré <b>EnviarSeguro</b> a mano
+    (Alt+F8) — esa versión sí te dice qué pasó.</p></div>`:""}
+
+  <div class="kpis">
+    ${kpi(`<span style="color:${colRes}">${cifra(res)}</span>`,"Resultado del período",
+      `<div class="d">${res>=0?"quedó a favor":"lo puso el taller"}</div>`)}
+    ${kpi(fmt(sg.length),"Reclamos facturados",delta(sg.length,sgA.length))}
+    ${kpi(cifra(rec),"Reclamado al seguro")}
+    ${kpi(cifra(apr),"Aprobado sin IVA",delta(apr,aprA,cifra))}
+    ${kpi(tsa===null?"—":`<span style="color:${tsa>=90?"var(--ok)":tsa>=70?"var(--warn)":"var(--bad)"}">${tsa}%</span>`,"Tasa de aprobación",
+      tsaA===null?'<div class="d">sin dato del año ant.</div>':`<div class="d ${tsa>=tsaA?"up":"dn"}">año ant.: ${tsaA}%</div>`)}
+    ${kpi(fmt(rojos.length),"Reclamos en rojo",
+      rojos.length?`<div class="d dn">${cifra(perdido)} sin cubrir</div>`:'<div class="d up">ninguno</div>')}
+  </div>
+
+  <div class="card"><h3>Resultado mes a mes <span>${F.anio} · verde a favor, rojo lo que puso el taller</span></h3>
+    ${barrasFirmadas(ganV)}
+    <p class="sub" style="margin-top:10px">Un mes en rojo no quiere decir que se trabajó mal:
+    quiere decir que la aseguradora aprobó menos de lo que costó la reparación.</p></div>
+
+  <div class="g g2">
+    <div class="card"><h3>Lo que se pidió y lo que reconocieron <span>${F.anio}</span></h3>${recVsApr()}</div>
+    <div class="card"><h3>Resultado por proveedor <span>quién deja plata y quién la saca</span></h3>${barrasProv()}</div>
+  </div>
+
+  ${provs.length>1?`<div class="card"><h3>El detalle por proveedor <span>${perTxt()}</span></h3>
+    ${tabla([{t:"Proveedor",v:x=>x[0]},
+      {t:"Reclamos",r:1,v:x=>fmt(x[1].n)},
+      {t:"Reclamado",r:1,v:x=>pesos(x[1].rec)},
+      {t:"Aprobado",r:1,v:x=>pesos(x[1].apr)},
+      {t:"Aprobación",r:1,h:x=>{const t=x[1].rec?Math.round(x[1].apr/x[1].rec*100):null;
+        return t===null?"—":`<span class="pill ${t>=90?"p-ok":t>=70?"p-w":"p-n"}">${t}%</span>`}},
+      {t:"Resultado",r:1,h:x=>`<b style="color:${x[1].gan>=0?"var(--ok)":"var(--bad)"}">${pesos(x[1].gan)}</b>`}],
+      provs)}</div>`:""}
+
+  <div class="g g2">
+    <div class="card"><h3>Reclamos por modelo <span>tocá para filtrar</span></h3>
+      ${barras(contar(sg,x=>x.mod),10,fmt,"filtMod")}</div>
+    <div class="card"><h3>Qué se rompe más <span>los 10 daños más repetidos</span></h3>
+      ${barras(contar(sg,x=>tit(x.dano).slice(0,34)),10)}</div>
+  </div>
+
+  <div class="card"><h3>Reclamo por reclamo <span>${perTxt()} · los peores primero</span></h3>
+    ${tabla([
+      {t:"Facturado",v:x=>fdia(x.f)},
+      {t:"Reclamado el",v:x=>fdia(x.fReclamo)},
+      {t:"Modelo",v:x=>x.mod},
+      {t:"Daño",v:x=>tit(x.dano)},
+      {t:"Proveedor",v:x=>x.prov||"—"},
+      {t:"Pedido",r:1,v:x=>pesos(x.reclamado||0)},
+      {t:"Aprobado",r:1,v:x=>pesos(x.aprobado||0)},
+      {t:"Resultado",r:1,h:x=>`<b style="color:${x.gan>=0?"var(--ok)":"var(--bad)"}">${pesos(x.gan)}</b>`}],
+      [...sg].sort((a,b)=>a.gan-b.gan))}</div>
+
+  <p class="sub">El mes es el de la <b>fecha de facturación al seguro</b>, no el del reclamo:
+  un siniestro reclamado en un mes y facturado al siguiente cuenta en el segundo, que es
+  cuando entra la plata. Los reclamos todavía sin facturar no aparecen en ningún mes.
+  Los filtros de canal y vendedor no aplican acá: la hoja del seguro no trae esos datos.</p>`;
 }};
 
 MOD.recepciones={ic:"🚚",t:"Recepciones",d:"Unidades recibidas de fábrica y novedades al llegar",r(S){
@@ -3706,7 +3872,7 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden && ULT_LECTURA && Date.now() - ULT_LECTURA > REFRESCO_MIN * 60000) refrescoSilencioso();
 });
 
-const ORDEN=["tablero","resumen","preparacion","entregas","envios","contratos","accesorios","recepciones","stock","unidades","vendedores","rotacion","informe"];
+const ORDEN=["tablero","resumen","preparacion","entregas","envios","contratos","accesorios","seguro","recepciones","stock","unidades","vendedores","rotacion","informe"];
 function armarNav(){
   const alertas=STK.filter(r=>r.patio>90||!r.ctrl).length;
   $("nav").innerHTML=ORDEN.filter(k=>MOD[k]).map(k=>[k,MOD[k]]).map(([k,m])=>`<button data-k="${k}" class="${k===actual?"on":""}" onclick="ir('${k}')"><span class="ic">${m.ic}</span>${m.t}${k==="stock"&&alertas?`<span class="bdg">${alertas}</span>`:""}</button>`).join("");
